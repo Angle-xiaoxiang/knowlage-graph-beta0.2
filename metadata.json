@@ -1,0 +1,5 @@
+{
+  "name": "布吉岛百科词条关系管理系统v1.1",
+  "description": "专为少年儿童打造的百科知识库。一个可视化的百科词条关系管理系统，利用 Gemini AI 进行智能内容生成和关系建议。",
+  "requestFramePermissions": []
+}

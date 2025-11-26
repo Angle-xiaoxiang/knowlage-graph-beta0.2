@@ -1,11 +1,136 @@
-<div align="center">
+# 布吉岛百科图谱 (Bujidao Encyclopedia Graph)
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+**专为少年儿童打造的可视化百科知识库**
 
-  <h1>Built with AI Studio</h2>
+这是一个基于 Web 的单页应用 (SPA)，旨在通过直观的力导向图谱（Force-Directed Graph）来展示和管理知识点之间的关系。项目集成了 **Google Gemini AI**，能够智能生成词条描述并建议词条之间的逻辑关系。
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+---
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## 🛠 修复与依赖说明 (重要)
 
-</div>
+如果您在安装时遇到 `404 Not Found: @google/genai` 错误，是因为该 SDK 版本更新较快。本项目已更新 `package.json` 使用最新的稳定版本。
+
+请确保您的环境满足：
+*   **Node.js**: v18.0.0 或更高版本
+*   **npm**: v9.0.0 或更高版本
+
+---
+
+## 🚀 快速开始 (本地开发)
+
+### 1. 下载代码
+将项目文件下载到本地文件夹，例如 `bujidao-graph`。
+
+### 2. 安装依赖
+在项目根目录下打开终端（Terminal / CMD），运行：
+
+```bash
+npm install
+```
+
+> **注意**: 如果下载速度慢，可以使用淘宝源：`npm install --registry=https://registry.npmmirror.com`
+
+### 3. 配置 API Key
+为了使用 AI 功能，您需要配置 Google Gemini API Key。
+在项目根目录创建一个名为 `.env` 的文件，填入您的 Key：
+
+```env
+VITE_API_KEY=your_gemini_api_key_here
+```
+
+### 4. 启动开发服务器
+```bash
+npm run dev
+```
+启动后，浏览器访问 `http://localhost:5173` 即可看到效果。
+
+---
+
+## 📦 部署指南 (部署到服务器)
+
+本项目是纯静态 SPA 应用，可以部署在 Nginx、Apache、Vercel 或任何静态文件托管服务上。
+
+### 步骤 1：构建生产环境代码
+
+在本地终端运行：
+
+```bash
+npm run build
+```
+
+运行成功后，项目根目录下会生成一个 **`dist`** 文件夹。
+*   `dist/index.html` - 入口文件
+*   `dist/assets/` - 打包后的 JS 和 CSS
+
+**这个 `dist` 文件夹就是您需要上传到服务器的所有内容。**
+
+---
+
+### 步骤 2：服务器部署 (以 Nginx 为例)
+
+假设您有一台 Linux 服务器 (Ubuntu/CentOS)。
+
+#### 1. 上传文件
+使用 SCP 或 FTP 工具将 `dist` 文件夹上传到服务器。
+例如上传到：`/var/www/bujidao`
+
+```bash
+# 示例 SCP 命令 (在本地执行)
+scp -r dist/* root@your_server_ip:/var/www/bujidao
+```
+
+#### 2. 配置 Nginx
+编辑 Nginx 配置文件 (通常在 `/etc/nginx/conf.d/default.conf` 或 `/etc/nginx/sites-available/bujidao`)。
+
+**关键点**: 因为是单页应用 (SPA)，必须配置 `try_files`，否则刷新页面会出现 404 错误。
+
+```nginx
+server {
+    listen 80;
+    server_name your_domain.com; # 替换为您的域名或 IP
+
+    # 指向您上传 dist 文件的目录
+    root /var/www/bujidao;
+    index index.html;
+
+    # 【重要】SPA 路由配置
+    # 如果请求的文件不存在，这就返回 index.html，交给 React 处理路由
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 静态资源缓存配置 (可选，优化性能)
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # 开启 Gzip 压缩 (可选)
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+}
+```
+
+#### 3. 重启 Nginx
+```bash
+# 检查配置是否正确
+sudo nginx -t
+
+# 重启服务
+sudo systemctl restart nginx
+```
+
+---
+
+## ❓ 常见问题排查
+
+**Q: `npm install` 报错 `@google/genai` 404?**
+A: 请尝试运行 `npm update` 或手动删除 `node_modules` 和 `package-lock.json` 后重新安装。如果还是不行，检查您的 npm 源是否是最新的。
+
+**Q: 部署后页面空白或报错?**
+A: 打开浏览器控制台 (F12 -> Console)。
+*   如果是 404 错误加载 JS/CSS：检查 Nginx 的 `root` 路径是否正确。
+*   如果是代码报错：可能是 API Key 未配置。请确保在构建时 `.env` 文件存在，或者在构建命令中传入环境变量：`VITE_API_KEY=xxx npm run build`。
+
+**Q: 刷新页面报 404?**
+A: 这是因为 Nginx 试图寻找对应的 HTML 文件（例如 `/cms`）但找不到。请确保 Nginx 配置中包含了 `try_files $uri $uri/ /index.html;`。
