@@ -4,12 +4,15 @@ import { Entry, Relationship, RelationType, CATEGORY_STYLES } from './types';
 import GraphView, { GraphViewHandle } from './components/GraphView';
 import KanbanView, { KanbanViewHandle } from './components/KanbanView';
 import Sidebar from './components/Sidebar';
+import Settings, { AIModelConfig } from './components/Settings';
 import { seedNodes, seedLinks } from './data/seedData';
-import { Plus, Search, LayoutGrid, Network, Minus, RotateCcw, Unplug, X, ExternalLink, Sun, Moon, Monitor, Database } from 'lucide-react';
+import { Plus, Search, LayoutGrid, Network, Minus, RotateCcw, Unplug, X, ExternalLink, Sun, Moon, Monitor, Database, Settings as SettingsIcon } from 'lucide-react';
+import { initAIService } from './services/aiService';
 
 const STORAGE_KEY_NODES = 'bujidao_nodes';
 const STORAGE_KEY_LINKS = 'bujidao_links';
 const STORAGE_KEY_THEME = 'bujidao_theme';
+const STORAGE_KEY_AI_CONFIG = 'bujidao_ai_config';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -48,6 +51,25 @@ const App: React.FC = () => {
   const [pendingLinkTarget, setPendingLinkTarget] = useState<Entry | null>(null);
   const [previewConnectionId, setPreviewConnectionId] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
+  
+  // --- AI Model Settings ---  
+  const [aiConfig, setAiConfig] = useState<AIModelConfig>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_AI_CONFIG);
+      return saved ? JSON.parse(saved) : {
+        type: 'gemini',
+        apiKey: '',
+        modelName: 'gemini-2.5-flash'
+      };
+    } catch { 
+      return {
+        type: 'gemini',
+        apiKey: '',
+        modelName: 'gemini-2.5-flash'
+      };
+    }
+  });
+  const [showSettings, setShowSettings] = useState(false);
 
   const graphRef = useRef<GraphViewHandle>(null);
   const kanbanRef = useRef<KanbanViewHandle>(null);
@@ -75,6 +97,18 @@ const App: React.FC = () => {
       localStorage.setItem(STORAGE_KEY_LINKS, JSON.stringify(links));
     } catch (e) { console.error(e); }
   }, [nodes, links]);
+
+  // 保存AI配置到localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_AI_CONFIG, JSON.stringify(aiConfig));
+    } catch (e) { console.error(e); }
+  }, [aiConfig]);
+
+  // 初始化和更新AI服务
+  useEffect(() => {
+    initAIService(aiConfig);
+  }, [aiConfig]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -112,7 +146,7 @@ const App: React.FC = () => {
     setShowSidebar(false);
   }, []);
 
-  const syncLinks = (base: Relationship[], target: Relationship) => {
+  const syncLinks = useCallback((base: Relationship[], target: Relationship) => {
     const sId = getId(target.source);
     const tId = getId(target.target);
     let newLinks = [...base];
@@ -130,15 +164,15 @@ const App: React.FC = () => {
       newLinks.push({ id: generateId(), source: tId, target: sId, type: expectedType, weight: target.weight });
     }
     return newLinks;
-  };
+  }, [getId, generateId]);
 
   const handleAddLink = useCallback((link: Relationship) => {
     setLinks(prev => syncLinks([...prev, link], link));
-  }, []);
+  }, [syncLinks]);
 
   const handleUpdateLink = useCallback((updatedLink: Relationship) => {
     setLinks(prev => syncLinks(prev.map(l => l.id === updatedLink.id ? updatedLink : l), updatedLink));
-  }, []);
+  }, [syncLinks]);
 
   const handleDeleteLink = useCallback((id: string) => {
     setLinks(prev => {
@@ -148,7 +182,7 @@ const App: React.FC = () => {
       const tId = getId(target.target);
       return prev.filter(l => l.id !== id && !(getId(l.source) === tId && getId(l.target) === sId));
     });
-  }, []);
+  }, [getId]);
 
   const handleResetData = () => {
     if(window.confirm('确定要重置所有数据吗？这将清除您所有的更改。')) {
@@ -403,6 +437,8 @@ const App: React.FC = () => {
              <button onClick={toggleTheme} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">{theme === 'light' ? <Sun className="w-4 h-4" /> : theme === 'dark' ? <Moon className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}</button>
              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
              <button onClick={handleResetData} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600"><Database className="w-4 h-4" /></button>
+             <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+             <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-blue-600"><SettingsIcon className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -438,6 +474,14 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 设置面板 */}
+      <Settings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        config={aiConfig}
+        onSave={setAiConfig}
+      />
     </div>
   );
 };
