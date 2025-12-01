@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Entry, EntryModule, CATEGORIES } from '../types';
-import { X, Plus, Trash2, Save, Sparkles, Box, Lock } from 'lucide-react';
+import { X, Plus, Trash2, Save, Sparkles, Box, Lock, Hash } from 'lucide-react';
 
 interface CMSEditModalProps {
   node: Entry;
@@ -53,10 +53,17 @@ const CMSEditModal: React.FC<CMSEditModalProps> = ({ node, isOpen, onClose, onSa
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            <EditIcon className="w-5 h-5 text-blue-600" />
-            编辑词条详情
-          </h2>
+          <div>
+            <div className="mb-1">
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                ID: {node.id}
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <EditIcon className="w-5 h-5 text-blue-600" />
+              编辑词条详情
+            </h2>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
             <X className="w-5 h-5 text-slate-500" />
           </button>

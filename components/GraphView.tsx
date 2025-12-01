@@ -57,6 +57,15 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
   onNodeDrop,
   pendingLinkTargetId
 }, ref) => {
+  // 添加调试日志
+  console.log('GraphView渲染参数:', {
+    nodesCount: nodes.length,
+    linksCount: links.length,
+    width,
+    height,
+    selectedNodeId,
+    hoveredNodeId
+  });
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomGroupRef = useRef<SVGGElement>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -145,7 +154,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
     const newNodes = nodes.map(d => {
       const prev = prevNodesRef.current.get(d.id);
       if (prev) {
-        return { ...d, x: prev.x, y: prev.y, vx: prev.vx, vy: prev.vy };
+        return { ...d, x: prev.x, y: prev.y, vx: 0, vy: 0 };
       }
       // 为新节点添加默认坐标，防止渲染时 x/y 为 undefined
       return { ...d, x: width / 2, y: height / 2, vx: 0, vy: 0 };
@@ -156,6 +165,11 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
     
     return { nodes: newNodes, links: newLinks };
   }, [nodes, links, width, height]);
+
+  // 确保 SVG 元素能够正确渲染
+  if (!width || !height) {
+    return <div className="w-full h-full flex items-center justify-center text-gray-500">加载中...</div>;
+  }
 
   // 新增：自动确保选中节点在屏幕可见区域内
   useEffect(() => {
@@ -319,7 +333,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
       .data(graphData.links)
       .join("text")
       .attr("class", "graph-label")
-      .text((d: any) => RELATION_LABELS[d.type as RelationType])
+      .text((d: any) => RELATION_LABELS[d.type as RelationType] || d.type) // 当关系类型不在枚举中时，直接使用关系类型字符串
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle") 
       .attr("font-size", "10px")

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Entry, RelationType, Relationship, RELATION_LABELS, CATEGORY_STYLES, CATEGORIES } from '../types';
-import { Plus, Trash2, Wand2, Network, Save, X, Link2, Search, ChevronsUpDown, Check, Pencil, Undo2, Weight, ListTree, LocateFixed, CopyPlus, Eye } from 'lucide-react';
+import { Plus, Trash2, Wand2, Network, Save, X, Link2, Search, ChevronsUpDown, Check, Pencil, Undo2, Weight, ListTree, LocateFixed, CopyPlus, Eye, Hash } from 'lucide-react';
 import { getAIService } from '../services/aiService';
 
 interface SidebarProps {
@@ -449,7 +449,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             /* 查看模式 */
             <div className="space-y-4 animate-in fade-in duration-300">
                <div>
-                  <div className="flex justify-between items-start gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-md font-medium border border-slate-200 dark:border-slate-700">
+                      {formData.category}
+                    </span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      ID: {formData.id}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-start gap-2 mb-3 pl-1">
                       <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight break-words">
                         {formData.title || '无标题'}
                       </h3>
@@ -469,9 +477,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                       </div>
                   </div>
-                  <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-full font-medium border border-slate-200 dark:border-slate-700">
-                     {formData.category}
-                  </span>
                </div>
                
                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800">

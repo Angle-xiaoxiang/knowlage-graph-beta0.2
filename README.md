@@ -1,196 +1,256 @@
-# 布吉岛百科图谱 (Bujidao Encyclopedia Graph)
+# Knowlage Graph
 
-**专为少年儿童打造的可视化百科知识库**
+一个基于React和D3.js的知识图谱应用，用于可视化和管理词条之间的关系。
 
-这是一个基于 Web 的单页应用 (SPA)，旨在通过直观的力导向图谱（Force-Directed Graph）来展示和管理知识点之间的关系。项目集成了 **Google Gemini AI**，能够智能生成词条描述并建议词条之间的逻辑关系。
+## 技术栈
 
----
+### 前端
+- **React 18** - 用于构建用户界面
+- **TypeScript** - 提供类型安全
+- **D3.js** - 用于图谱可视化
+- **Tailwind CSS** - 用于样式设计
+- **React Router** - 用于路由管理
+- **Lucide React** - 用于图标
 
-## 📁 目录结构
+### 后端
+- **Express** - 用于构建API服务器
+- **MySQL** - 用于数据存储
+- **TypeScript** - 提供类型安全
+
+### 开发工具
+- **Vite** - 用于构建和开发服务器
+- **TSX** - 用于运行TypeScript文件
+- **Tailwind CSS** - 用于样式设计
+- **PostCSS** - 用于CSS处理
+- **Autoprefixer** - 用于自动添加CSS前缀
+- **Concurrently** - 用于并行运行多个命令
+
+### AI服务
+- **Google Gemini** - 用于AI生成和关系建议
+- **Doubao** - 用于AI生成和关系建议
+
+## 目录结构
 
 ```
-bujidao-graph/
-├── components/          # React 组件
-│   ├── CMSEditModal.tsx      # 词条编辑模态框
-│   ├── CMSPage.tsx           # CMS 页面组件
-│   ├── EntryDetailView.tsx   # 词条详情视图
-│   ├── GraphPage.tsx         # 图谱页面组件
-│   ├── GraphView.tsx         # 力导向图可视化组件
-│   ├── KanbanView.tsx        # 看板视图组件
-│   └── Sidebar.tsx           # 侧边栏组件
-├── data/               # 数据相关
-│   └── seedData.ts           # 初始种子数据
-├── services/           # 服务层
-│   └── geminiService.ts      # Google Gemini AI 服务
-├── .gitignore          # Git 忽略文件配置
-├── App.tsx             # 主应用组件
-├── index.css           # 全局样式
-├── index.html          # HTML 入口文件
-├── index.tsx           # React 入口文件
-├── metadata.json       # 项目元数据
-├── package.json        # 项目配置和依赖
-├── package-lock.json   # 依赖版本锁定文件
-├── postcss.config.js   # PostCSS 配置
-├── README.md           # 项目说明文档
-├── tailwind.config.js  # Tailwind CSS 配置
-├── tsconfig.json       # TypeScript 配置
-├── tsconfig.node.json  # Node.js TypeScript 配置
-├── types.ts            # 类型定义
-└── vite.config.ts      # Vite 构建配置
+knowlage-graph-beta0.2/
+├── components/          # React组件
+│   ├── CMSEditModal.tsx    # CMS编辑弹窗
+│   ├── CMSPage.tsx         # CMS管理页面
+│   ├── EntryDetailView.tsx # 词条详情页面
+│   ├── GraphPage.tsx       # 图谱页面
+│   ├── GraphView.tsx       # 图谱可视化组件
+│   ├── KanbanView.tsx      # 看板视图组件
+│   ├── Settings.tsx        # 设置组件
+│   └── Sidebar.tsx         # 侧边栏组件
+├── data/                # 数据相关
+│   └── seedData.ts         # 初始数据
+├── server/              # 后端代码
+│   └── index.ts            # 服务器入口
+├── services/            # 服务层
+│   ├── aiService.ts        # AI服务接口
+│   ├── apiService.ts       # API服务
+│   ├── dbService.ts        # 数据库服务
+│   ├── doubaoService.ts    # 豆包AI服务
+│   └── geminiService.ts    # Gemini AI服务
+├── .env                 # 环境变量配置
+├── .gitignore           # Git忽略文件
+├── App.tsx              # 应用入口组件
+├── index.css            # 全局样式
+├── index.html           # HTML模板
+├── index.tsx            # 应用入口文件
+├── metadata.json        # 项目元数据
+├── package-lock.json    # 依赖锁定文件
+├── package.json         # 项目配置和依赖
+├── postcss.config.js    # PostCSS配置
+├── tailwind.config.js   # Tailwind CSS配置
+├── tsconfig.json        # TypeScript配置
+├── tsconfig.node.json   # TypeScript Node配置
+├── types.ts             # TypeScript类型定义
+└── vite.config.ts       # Vite配置
 ```
 
-### 目录说明
+## 核心功能
 
-- **components/**：包含所有 React 组件，负责不同视图和功能模块
-- **data/**：包含初始种子数据和数据处理相关文件
-- **services/**：包含外部服务调用，如 AI 服务
-- **App.tsx**：应用的主组件，管理全局状态和路由
-- **GraphView.tsx**：核心的力导向图可视化组件，使用 D3.js 实现
-- **Sidebar.tsx**：侧边栏组件，用于编辑和查看词条详情
-- **types.ts**：定义项目中使用的所有 TypeScript 类型
+1. **知识图谱可视化**
+   - 使用D3.js实现的交互式图谱
+   - 支持拖拽、缩放、节点选择
+   - 节点按分类显示不同颜色
 
----
+2. **词条管理**
+   - 创建、编辑、删除词条
+   - 支持分类管理
+   - 支持扩展信息模块
 
-## 🛠 修复与依赖说明 (重要)
+3. **关系管理**
+   - 创建、编辑、删除词条间的关系
+   - 支持多种关系类型
+   - 支持关系权重设置
 
-本项目已使用最新稳定版本的依赖包，包括 `@google/genai@^1.30.0`。
+4. **AI辅助功能**
+   - AI生成词条描述
+   - AI建议词条间的关系
+   - 支持多种AI服务提供商
 
-请确保您的环境满足：
-*   **Node.js**: v18.0.0 或更高版本
-*   **npm**: v9.0.0 或更高版本
+5. **CMS管理**
+   - 批量管理词条
+   - 支持编辑扩展信息模块
+   - 预设模块类型
 
----
+6. **多种视图**
+   - 图谱视图
+   - 看板视图
+   - 词条详情视图
 
-## 🚀 快速开始 (本地开发)
+## 安装和运行
 
-### 1. 下载代码
-将项目文件下载到本地文件夹，例如 `bujidao-graph`。
+### 前置要求
+- Node.js 16+ 
+- MySQL数据库
 
-### 2. 安装依赖
-在项目根目录下打开终端（Terminal / CMD），运行：
+### 安装依赖
 
 ```bash
 npm install
 ```
 
-> **注意**: 如果下载速度慢，可以使用淘宝源：`npm install --registry=https://registry.npmmirror.com`
+### 配置环境变量
 
-### 3. 配置 API Key
-为了使用 AI 功能，您需要配置 Google Gemini API Key。
-在项目根目录创建一个名为 `.env` 的文件，填入您的 Key：
+创建`.env`文件并配置以下环境变量：
 
-```env
-VITE_API_KEY=your_gemini_api_key_here
+```
+# 数据库配置
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=knowlage_graph
+
+# AI服务配置
+GEMINI_API_KEY=your_gemini_api_key
+DOUBAO_API_KEY=your_doubao_api_key
 ```
 
-### 4. 启动开发服务器
+### 运行项目
+
+开发模式（同时启动前端和后端）：
+
 ```bash
+npm run start
+```
+
+或者分别启动：
+
+```bash
+# 启动前端开发服务器
 npm run dev
+
+# 启动后端服务器
+npm run server:dev
 ```
-启动后，浏览器访问 `http://localhost:5173` 即可看到效果。
 
-如果端口 5173 被占用或无法使用，可以指定其他端口：
-```bash
-npm run dev -- --port 3000
-```
-此时访问地址为 `http://localhost:3000`
-
----
-
-## 📦 部署指南 (部署到服务器)
-
-本项目是纯静态 SPA 应用，可以部署在 Nginx、Apache、Vercel 或任何静态文件托管服务上。
-
-### 步骤 1：构建生产环境代码
-
-在本地终端运行：
+### 构建项目
 
 ```bash
 npm run build
 ```
 
-运行成功后，项目根目录下会生成一个 **`dist`** 文件夹。
-*   `dist/index.html` - 入口文件
-*   `dist/assets/` - 打包后的 JS 和 CSS
+## 配置说明
 
-**这个 `dist` 文件夹就是您需要上传到服务器的所有内容。**
+### 数据库配置
 
----
+项目使用MySQL数据库，需要先创建数据库和表。可以使用以下SQL语句创建表：
 
-### 步骤 2：服务器部署 (以 Nginx 为例)
+```sql
+CREATE TABLE entries (
+  id VARCHAR(255) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  category VARCHAR(255) NOT NULL,
+  description TEXT,
+  tags JSON,
+  x FLOAT,
+  y FLOAT,
+  vx FLOAT,
+  vy FLOAT,
+  modules JSON
+);
 
-假设您有一台 Linux 服务器 (Ubuntu/CentOS)。
-
-#### 1. 上传文件
-使用 SCP 或 FTP 工具将 `dist` 文件夹上传到服务器。
-例如上传到：`/var/www/bujidao`
-
-```bash
-# 示例 SCP 命令 (在本地执行)
-scp -r dist/* root@your_server_ip:/var/www/bujidao
+CREATE TABLE relationships (
+  id VARCHAR(255) PRIMARY KEY,
+  source VARCHAR(255) NOT NULL,
+  target VARCHAR(255) NOT NULL,
+  type VARCHAR(255) NOT NULL,
+  weight INT NOT NULL
+);
 ```
 
-#### 2. 配置 Nginx
-编辑 Nginx 配置文件 (通常在 `/etc/nginx/conf.d/default.conf` 或 `/etc/nginx/sites-available/bujidao`)。
+### AI服务配置
 
-**关键点**: 因为是单页应用 (SPA)，必须配置 `try_files`，否则刷新页面会出现 404 错误。
+项目支持两种AI服务：
 
-```nginx
-server {
-    listen 80;
-    server_name your_domain.com; # 替换为您的域名或 IP
+1. **Google Gemini** - 需要配置`GEMINI_API_KEY`
+2. **Doubao** - 需要配置`DOUBAO_API_KEY`
 
-    # 指向您上传 dist 文件的目录
-    root /var/www/bujidao;
-    index index.html;
+可以在`services/aiService.ts`中切换默认的AI服务。
 
-    # 【重要】SPA 路由配置
-    # 如果请求的文件不存在，这就返回 index.html，交给 React 处理路由
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
+## 开发说明
 
-    # 静态资源缓存配置 (可选，优化性能)
-    location /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, no-transform";
-    }
+### 组件结构
 
-    # 开启 Gzip 压缩 (可选)
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-}
-```
+- **GraphPage** - 图谱页面，包含图谱视图和看板视图
+- **GraphView** - 图谱可视化组件，使用D3.js实现
+- **KanbanView** - 看板视图组件，用于列表展示词条
+- **Sidebar** - 侧边栏组件，用于显示和编辑词条详情
+- **EntryDetailView** - 词条详情页面，用于查看词条的完整信息
+- **CMSEditModal** - CMS编辑弹窗，用于编辑词条信息
+- **CMSPage** - CMS管理页面，用于批量管理词条
 
-#### 3. 重启 Nginx
-```bash
-# 检查配置是否正确
-sudo nginx -t
+### 类型定义
 
-# 重启服务
-sudo systemctl restart nginx
-```
+所有类型定义都在`types.ts`文件中，包括：
 
----
+- **Entry** - 词条类型
+- **Relationship** - 关系类型
+- **RelationType** - 关系类型枚举
+- **EntryModule** - 扩展信息模块类型
 
-## ❓ 常见问题排查
+### 服务层
 
-**Q: `npm install` 报错 `@google/genai` 404?**
-A: 本项目已更新 `@google/genai` 到最新稳定版本 `^1.30.0`。如果仍有问题，请尝试运行 `npm update` 或手动删除 `node_modules` 和 `package-lock.json` 后重新安装。
+服务层包含以下服务：
 
-**Q: 启动开发服务器时出现 `Error: listen EACCES: permission denied`?**
-A: 这是端口权限问题或端口被占用。请尝试使用其他端口启动：
-```bash
-npm run dev -- --port 3000
-```
+- **aiService** - AI服务接口，用于生成词条描述和关系建议
+- **apiService** - API服务，用于与后端通信
+- **dbService** - 数据库服务，用于操作数据库
+- **doubaoService** - 豆包AI服务实现
+- **geminiService** - Gemini AI服务实现
 
-**Q: 启动开发服务器时出现 `Error: listen EADDRINUSE: address already in use`?**
-A: 端口已被其他程序占用。请尝试使用其他端口启动，或关闭占用该端口的程序。
+## 依赖说明
 
-**Q: 部署后页面空白或报错?**
-A: 打开浏览器控制台 (F12 -> Console)。
-*   如果是 404 错误加载 JS/CSS：检查 Nginx 的 `root` 路径是否正确。
-*   如果是代码报错：可能是 API Key 未配置。请确保在构建时 `.env` 文件存在，或者在构建命令中传入环境变量：`VITE_API_KEY=xxx npm run build`。
+### 核心依赖
 
-**Q: 刷新页面报 404?**
-A: 这是因为 Nginx 试图寻找对应的 HTML 文件（例如 `/cms`）但找不到。请确保 Nginx 配置中包含了 `try_files $uri $uri/ /index.html;`。
+| 依赖名称 | 版本 | 用途 |
+|---------|------|------|
+| react | ^18.2.0 | 构建用户界面 |
+| react-dom | ^18.2.0 | React DOM渲染 |
+| typescript | ^5.2.2 | 类型安全 |
+| d3 | ^7.9.0 | 图谱可视化 |
+| react-router-dom | ^6.22.3 | 路由管理 |
+| lucide-react | ^0.344.0 | 图标 |
+| express | ^4.19.2 | API服务器 |
+| mysql2 | ^3.15.3 | 数据库连接 |
+| @google/genai | ^1.30.0 | Google Gemini AI服务 |
+
+### 开发依赖
+
+| 依赖名称 | 版本 | 用途 |
+|---------|------|------|
+| vite | ^5.1.6 | 构建和开发服务器 |
+| tailwindcss | ^3.4.1 | 样式设计 |
+| postcss | ^8.4.35 | CSS处理 |
+| autoprefixer | ^10.4.18 | 自动添加CSS前缀 |
+| concurrently | ^8.2.2 | 并行运行多个命令 |
+| tsx | ^4.19.1 | 运行TypeScript文件 |
+| @types/* | 多种 | TypeScript类型定义 |
+
+## 许可证
+
+MIT License

@@ -111,7 +111,7 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave }) 
                 type="password"
                 value={localConfig.apiKey}
                 onChange={(e) => setLocalConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                placeholder={`请输入${localConfig.type === 'gemini' ? 'Google Gemini' : '豆包'}`} API Key
+                placeholder={`请输入${localConfig.type === 'gemini' ? 'Google Gemini' : '豆包'} API Key`}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400">
