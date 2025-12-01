@@ -1,39 +1,27 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Entry, Relationship, RelationType, CATEGORY_STYLES } from './types';
 import GraphView, { GraphViewHandle } from './components/GraphView';
 import KanbanView, { KanbanViewHandle } from './components/KanbanView';
 import Sidebar from './components/Sidebar';
+import Settings, { AIModelConfig } from './components/Settings';
+import { Plus, Search, LayoutGrid, Network, Minus, RotateCcw, Unplug, X, ExternalLink, Sun, Moon, Monitor, Database, Settings as SettingsIcon, RefreshCw } from 'lucide-react';
+import { initAIService } from './services/aiService';
+import { apiService } from './services/apiService';
 import { seedNodes, seedLinks } from './data/seedData';
-import { Plus, Search, LayoutGrid, Network, Minus, RotateCcw, Unplug, X, ExternalLink, Sun, Moon, Monitor, Database } from 'lucide-react';
 
-const STORAGE_KEY_NODES = 'bujidao_nodes';
-const STORAGE_KEY_LINKS = 'bujidao_links';
 const STORAGE_KEY_THEME = 'bujidao_theme';
+const STORAGE_KEY_AI_CONFIG = 'bujidao_ai_config';
 
 type Theme = 'light' | 'dark' | 'system';
 
 const App: React.FC = () => {
   // --- Data State ---
-  const [nodes, setNodes] = useState<Entry[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_NODES);
-      return saved ? JSON.parse(saved) : seedNodes;
-    } catch { return seedNodes; }
-  });
-
-  const [links, setLinks] = useState<Relationship[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_LINKS);
-      return saved ? JSON.parse(saved) : seedLinks;
-    } catch { return seedLinks; }
-  });
-
-  const [theme, setTheme] = useState<Theme>(() => {
-    try { return (localStorage.getItem(STORAGE_KEY_THEME) as Theme) || 'system'; } 
-    catch { return 'system'; }
-  });
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [nodes, setNodes] = useState<Entry[]>([]);
+  const [links, setLinks] = useState<Relationship[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
 
   // --- UI State ---
   const [viewMode, setViewMode] = useState<'graph' | 'kanban'>('graph');
@@ -48,13 +36,98 @@ const App: React.FC = () => {
   const [pendingLinkTarget, setPendingLinkTarget] = useState<Entry | null>(null);
   const [previewConnectionId, setPreviewConnectionId] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
+  
+  // --- AI Model Settings ---  
+  const [aiConfig, setAiConfig] = useState<AIModelConfig>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_AI_CONFIG);
+      return saved ? JSON.parse(saved) : {
+        type: 'gemini',
+        apiKey: '',
+        modelName: 'gemini-2.5-flash'
+      };
+    } catch { 
+      return {
+        type: 'gemini',
+        apiKey: '',
+        modelName: 'gemini-2.5-flash'
+      };
+    }
+  });
+  const [showSettings, setShowSettings] = useState(false);
 
   const graphRef = useRef<GraphViewHandle>(null);
   const kanbanRef = useRef<KanbanViewHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
+  // 初始化viewport为0，然后在useEffect中更新为实际值
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   // --- Effects ---
+  // 初始化和更新AI服务
+  useEffect(() => {
+    initAIService(aiConfig);
+  }, [aiConfig]);
+
+  // 从数据库加载数据
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      setError(null);
+      setErrorDetails(null);
+      try {
+        console.log('开始从数据库加载数据...');
+        // 使用apiService获取数据
+        const graphData = await apiService.getGraphData();
+        console.log('成功获取到数据:', {
+          nodesCount: graphData.nodes?.length || 0,
+          linksCount: graphData.links?.length || 0
+        });
+        setNodes(graphData.nodes);
+        setLinks(graphData.links);
+      } catch (err) {
+        console.error('❌ 加载数据失败:', err);
+        let errorMsg = '加载数据失败';
+        let details = '';
+        
+        if (err instanceof Error) {
+          console.error('错误名称:', err.name);
+          console.error('错误信息:', err.message);
+          console.error('错误堆栈:', err.stack);
+          
+          details = err.message;
+          
+          // 检查是否是CORS错误
+          if (err.message.includes('CORS')) {
+            errorMsg = 'CORS错误：无法从服务器获取数据';
+            details = '请检查服务器的CORS配置，确保允许当前域名访问';
+          }
+          // 检查是否是网络错误
+          else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+            errorMsg = '网络错误：无法连接到服务器';
+            details = '请检查服务器是否正在运行，以及URL是否正确';
+          }
+          // 检查是否是HTTP错误
+          else if (err.message.includes('HTTP error')) {
+            errorMsg = '服务器错误：请求失败';
+            details = err.message;
+          }
+        }
+        
+        setError(errorMsg);
+        setErrorDetails(details);
+        setShowError(true);
+        // 使用本地种子数据作为备用
+        console.log('使用本地种子数据作为备用...');
+        setNodes(seedNodes);
+        setLinks(seedLinks);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -70,96 +143,154 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_NODES, JSON.stringify(nodes));
-      localStorage.setItem(STORAGE_KEY_LINKS, JSON.stringify(links));
-    } catch (e) { console.error(e); }
-  }, [nodes, links]);
-
-  useEffect(() => {
     const root = window.document.documentElement;
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const applyTheme = (t: Theme) => {
       const isDark = t === 'dark' || (t === 'system' && systemDark);
-      setIsDarkMode(isDark);
       if (isDark) root.classList.add('dark'); else root.classList.remove('dark');
       localStorage.setItem(STORAGE_KEY_THEME, t);
     };
-    applyTheme(theme);
-    if (theme === 'system') {
+    
+    // 默认使用系统主题
+    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as Theme || 'system';
+    applyTheme(savedTheme);
+    
+    if (savedTheme === 'system') {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       const listener = (e: MediaQueryListEvent) => applyTheme('system');
       mq.addEventListener('change', listener);
       return () => mq.removeEventListener('change', listener);
     }
-  }, [theme]);
+  }, []);
 
   // --- Helpers & Handlers ---
   const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
   const getId = (item: any) => (typeof item === 'string' ? item : item?.id);
 
-  const handleAddNode = useCallback((node: Entry) => {
-    setNodes(prev => [...prev, node]);
+  const handleAddNode = useCallback(async (node: Entry) => {
+    try {
+      const newNode = await apiService.addEntry(node);
+      setNodes(prev => [...prev, newNode]);
+    } catch (err) {
+      console.error('添加节点失败:', err);
+      setError('添加节点失败');
+      setShowError(true);
+    }
   }, []);
 
-  const handleUpdateNode = useCallback((updatedNode: Entry) => {
-    setNodes(prev => prev.map(n => n.id === updatedNode.id ? updatedNode : n));
+  const handleUpdateNode = useCallback(async (updatedNode: Entry) => {
+    try {
+      const updated = await apiService.updateEntry(updatedNode.id, updatedNode);
+      setNodes(prev => prev.map(n => n.id === updated.id ? updated : n));
+    } catch (err) {
+      console.error('更新节点失败:', err);
+      setError('更新节点失败');
+      setShowError(true);
+    }
   }, []);
 
-  const handleDeleteNode = useCallback((id: string) => {
-    setNodes(prev => prev.filter(n => n.id !== id));
-    setLinks(prev => prev.filter(l => getId(l.source) !== id && getId(l.target) !== id));
-    setShowSidebar(false);
+  const handleDeleteNode = useCallback(async (id: string) => {
+    try {
+      await apiService.deleteEntry(id);
+      setNodes(prev => prev.filter(n => n.id !== id));
+      setLinks(prev => prev.filter(l => getId(l.source) !== id && getId(l.target) !== id));
+      setShowSidebar(false);
+    } catch (err) {
+      console.error('删除节点失败:', err);
+      setError('删除节点失败');
+      setShowError(true);
+    }
+  }, [getId]);
+
+  const handleAddLink = useCallback(async (link: Relationship) => {
+    try {
+      await apiService.addRelationship(link);
+      // 重新获取所有数据，确保双向关系同步
+      const graphData = await apiService.getGraphData();
+      setNodes(graphData.nodes);
+      setLinks(graphData.links);
+    } catch (err) {
+      console.error('添加关联失败:', err);
+      setError('添加关联失败');
+      setShowError(true);
+    }
   }, []);
 
-  const syncLinks = (base: Relationship[], target: Relationship) => {
-    const sId = getId(target.source);
-    const tId = getId(target.target);
-    let newLinks = [...base];
+  const handleUpdateLink = useCallback(async (updatedLink: Relationship) => {
+    try {
+      await apiService.updateRelationship(updatedLink.id, updatedLink);
+      // 重新获取所有数据，确保双向关系同步
+      const graphData = await apiService.getGraphData();
+      setNodes(graphData.nodes);
+      setLinks(graphData.links);
+    } catch (err) {
+      console.error('更新关联失败:', err);
+      setError('更新关联失败');
+      setShowError(true);
+    }
+  }, []);
+
+  const handleDeleteLink = useCallback(async (id: string) => {
+    try {
+      await apiService.deleteRelationship(id);
+      // 重新获取所有数据，确保双向关系同步
+      const graphData = await apiService.getGraphData();
+      setNodes(graphData.nodes);
+      setLinks(graphData.links);
+    } catch (err) {
+      console.error('删除关联失败:', err);
+      setError('删除关联失败');
+      setShowError(true);
+    }
+  }, []);
+
+  const handleResetData = async () => {
+    if(window.confirm('确定要从数据库重新加载所有数据吗？')) {
+      setIsLoading(true);
+      setError(null);
+      setErrorDetails(null);
+      try {
+        console.log('开始从数据库重新加载所有数据...');
+        const graphData = await apiService.getGraphData();
+        console.log('成功获取到数据:', {
+          nodesCount: graphData.nodes?.length || 0,
+          linksCount: graphData.links?.length || 0
+        });
+        setNodes(graphData.nodes);
+        setLinks(graphData.links);
+      } catch (err) {
+        console.error('❌ 重新加载数据失败:', err);
+        let errorMsg = '重新加载数据失败';
+        let details = '';
+        
+        if (err instanceof Error) {
+          details = err.message;
+        }
+        
+        setError(errorMsg);
+        setErrorDetails(details);
+        setShowError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+
+
+  const toggleTheme = () => {
+    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as Theme || 'system';
+    let newTheme: Theme;
+    if (savedTheme === 'light') newTheme = 'dark';
+    else if (savedTheme === 'dark') newTheme = 'system';
+    else newTheme = 'light';
     
-    let expectedType = RelationType.RELATED_TO;
-    if (target.type === RelationType.BELONGS_TO) expectedType = RelationType.CONTAINS;
-    else if (target.type === RelationType.CONTAINS) expectedType = RelationType.BELONGS_TO;
-    else if (target.type === RelationType.SIMILAR_TO) expectedType = RelationType.SIMILAR_TO;
-    else if (target.type === RelationType.HOMONYM) expectedType = RelationType.HOMONYM;
-
-    const reverseIdx = newLinks.findIndex(l => getId(l.source) === tId && getId(l.target) === sId);
-    if (reverseIdx >= 0) {
-      newLinks[reverseIdx] = { ...newLinks[reverseIdx], type: expectedType, weight: target.weight };
-    } else {
-      newLinks.push({ id: generateId(), source: tId, target: sId, type: expectedType, weight: target.weight });
-    }
-    return newLinks;
+    const root = window.document.documentElement;
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = newTheme === 'dark' || (newTheme === 'system' && systemDark);
+    if (isDark) root.classList.add('dark'); else root.classList.remove('dark');
+    localStorage.setItem(STORAGE_KEY_THEME, newTheme);
   };
-
-  const handleAddLink = useCallback((link: Relationship) => {
-    setLinks(prev => syncLinks([...prev, link], link));
-  }, []);
-
-  const handleUpdateLink = useCallback((updatedLink: Relationship) => {
-    setLinks(prev => syncLinks(prev.map(l => l.id === updatedLink.id ? updatedLink : l), updatedLink));
-  }, []);
-
-  const handleDeleteLink = useCallback((id: string) => {
-    setLinks(prev => {
-      const target = prev.find(l => l.id === id);
-      if (!target) return prev;
-      const sId = getId(target.source);
-      const tId = getId(target.target);
-      return prev.filter(l => l.id !== id && !(getId(l.source) === tId && getId(l.target) === sId));
-    });
-  }, []);
-
-  const handleResetData = () => {
-    if(window.confirm('确定要重置所有数据吗？这将清除您所有的更改。')) {
-      setNodes(seedNodes);
-      setLinks(seedLinks);
-      localStorage.removeItem(STORAGE_KEY_NODES);
-      localStorage.removeItem(STORAGE_KEY_LINKS);
-    }
-  };
-
-  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light');
 
   const handleNodeClick = (node: Entry) => {
     setSelectedNode(node);
@@ -231,28 +362,50 @@ const App: React.FC = () => {
 
   return (
     <div className="w-full h-screen overflow-hidden text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative" ref={containerRef} onClick={() => setShowSearchDropdown(false)}>
-      
+      {/* 加载状态 */}
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-xl flex items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="text-slate-800 dark:text-slate-200">正在加载数据...</span>
+          </div>
+        </div>
+      )}
+
+      {/* 错误提示 */}
+      {showError && error && (
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-50 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-2 rounded-lg shadow-lg flex flex-col items-start gap-2 max-w-md">
+          <div className="flex items-center justify-between w-full">
+            <span className="font-medium">{error}</span>
+            <button onClick={() => setShowError(false)} className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {errorDetails && (
+            <span className="text-sm text-red-600 dark:text-red-400">{errorDetails}</span>
+          )}
+        </div>
+      )}
+
       {/* 视图内容 */}
       <div className="absolute inset-0 z-0">
           {viewMode === 'graph' ? (
-            viewport.width > 0 && (
-              <GraphView 
-                ref={graphRef}
-                nodes={nodes}
-                links={links} 
-                onNodeClick={handleNodeClick}
-                onBackgroundClick={handleBackgroundClick}
-                width={viewport.width}
-                height={viewport.height}
-                selectedNodeId={selectedNode?.id}
-                hoveredNodeId={hoveredNodeId}
-                setHoveredNodeId={setHoveredNodeId}
-                onZoomChange={setZoomLevel}
-                isDarkMode={isDarkMode}
-                onNodeDrop={handleNodeDrop}
-                pendingLinkTargetId={previewConnectionId || pendingLinkTarget?.id}
-              />
-            )
+            <GraphView 
+              ref={graphRef}
+              nodes={nodes}
+              links={links} 
+              onNodeClick={handleNodeClick}
+              onBackgroundClick={handleBackgroundClick}
+              width={Math.max(viewport.width, 800)} // 确保至少有800px宽度
+              height={Math.max(viewport.height, 600)} // 确保至少有600px高度
+              selectedNodeId={selectedNode?.id}
+              hoveredNodeId={hoveredNodeId}
+              setHoveredNodeId={setHoveredNodeId}
+              onZoomChange={setZoomLevel}
+              isDarkMode={document.documentElement.classList.contains('dark')}
+              onNodeDrop={handleNodeDrop}
+              pendingLinkTargetId={previewConnectionId || pendingLinkTarget?.id}
+            />
           ) : (
             <div className="w-full h-full pt-20 pb-20">
               <KanbanView 
@@ -400,9 +553,11 @@ const App: React.FC = () => {
           <div className="flex items-center gap-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg border border-slate-100 dark:border-slate-800 rounded-xl p-1">
              <button onClick={() => setShowOrphanList(!showOrphanList)} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ${showOrphanList ? 'bg-orange-100 text-orange-700' : 'text-slate-600 dark:text-slate-400'}`}><Unplug className="w-4 h-4" /> 游离词条 {orphanNodes.length > 0 && <span className="bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">{orphanNodes.length}</span>}</button>
              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-             <button onClick={toggleTheme} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">{theme === 'light' ? <Sun className="w-4 h-4" /> : theme === 'dark' ? <Moon className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}</button>
+             <button onClick={toggleTheme} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">{document.documentElement.classList.contains('dark') ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}</button>
              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-             <button onClick={handleResetData} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600"><Database className="w-4 h-4" /></button>
+             <button onClick={handleResetData} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600" title="从数据库重新加载数据"><Database className="w-4 h-4" /></button>
+             <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+             <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-blue-600"><SettingsIcon className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -438,6 +593,14 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 设置面板 */}
+      <Settings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        config={aiConfig}
+        onSave={setAiConfig}
+      />
     </div>
   );
 };

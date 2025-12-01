@@ -57,6 +57,15 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
   onNodeDrop,
   pendingLinkTargetId
 }, ref) => {
+  // 添加调试日志
+  console.log('GraphView渲染参数:', {
+    nodesCount: nodes.length,
+    linksCount: links.length,
+    width,
+    height,
+    selectedNodeId,
+    hoveredNodeId
+  });
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomGroupRef = useRef<SVGGElement>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -141,20 +150,26 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
 
   // 缓存数据准备逻辑并与先前的位置合并
   const graphData = useMemo(() => {
-    // 1. 准备节点（保留位置）
+    // 1. 准备节点（保留位置，确保所有节点都有 x/y 坐标）
     const newNodes = nodes.map(d => {
       const prev = prevNodesRef.current.get(d.id);
       if (prev) {
-        return { ...d, x: prev.x, y: prev.y, vx: prev.vx, vy: prev.vy };
+        return { ...d, x: prev.x, y: prev.y, vx: 0, vy: 0 };
       }
-      return { ...d };
+      // 为新节点添加默认坐标，防止渲染时 x/y 为 undefined
+      return { ...d, x: width / 2, y: height / 2, vx: 0, vy: 0 };
     });
 
     // 2. 准备连线
     const newLinks = links.map(d => ({ ...d }));
     
     return { nodes: newNodes, links: newLinks };
-  }, [nodes, links]);
+  }, [nodes, links, width, height]);
+
+  // 确保 SVG 元素能够正确渲染
+  if (!width || !height) {
+    return <div className="w-full h-full flex items-center justify-center text-gray-500">加载中...</div>;
+  }
 
   // 新增：自动确保选中节点在屏幕可见区域内
   useEffect(() => {
@@ -220,6 +235,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
     // 只有当第一次渲染或重置时清空，这里为了简单，我们每次数据变化重绘
     svg.selectAll("*").remove(); 
 
+    // 直接使用 graphData.nodes 作为仿真数据，因为它已经包含了正确的 x/y 坐标
     // 为下一次渲染更新 prevNodes 映射
     graphData.nodes.forEach(n => {
       if (n.id) prevNodesRef.current.set(n.id, n);
@@ -256,10 +272,11 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
       .force("link", d3.forceLink(graphData.links)
         .id((d: any) => d.id)
         .distance((d: any) => Math.max(60, 200 - ((d.weight || 1) * 15))) // 稍微缩短距离
+        .strength(0.8) // 增加连接强度，使边更稳定
       )
       .force("charge", d3.forceManyBody().strength(-150)) // 降低斥力 (从 -400 到 -150)
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius(30)); // 略微减小碰撞半径 (从 35 到 30)
+      .force("center", d3.forceCenter(width / 2, height / 2).strength(0.3)) // 增加中心引力，使新节点更稳定
+      .force("collide", d3.forceCollide().radius(30).strength(0.8)); // 增加碰撞强度，防止节点重叠
     
     simulationRef.current = simulation;
 
@@ -316,7 +333,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
       .data(graphData.links)
       .join("text")
       .attr("class", "graph-label")
-      .text((d: any) => RELATION_LABELS[d.type as RelationType])
+      .text((d: any) => RELATION_LABELS[d.type as RelationType] || d.type) // 当关系类型不在枚举中时，直接使用关系类型字符串
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle") 
       .attr("font-size", "10px")
@@ -440,7 +457,9 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
         connectionLine.attr("opacity", 0);
       }
         
-      graphData.nodes.forEach(n => {
+      // 保存仿真中所有节点的位置，而不是 graphData.nodes
+      const simNodes = simulationRef.current?.nodes() as any[];
+      simNodes.forEach(n => {
         if(n.id) prevNodesRef.current.set(n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy });
       });
     });
@@ -650,9 +669,10 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
     // 手动更新连接线 (connectionLine) 的位置
     // 这确保了即使仿真已停止（tick 不再触发），当 pendingLinkTargetId 变化时，连线依然能立即更新到正确位置
     if (pendingLinkTargetId && selectedNodeId) {
-       // 需要将其转换为 any 才能访问 D3 添加的 x/y 属性
-       const sourceNode = graphData.nodes.find(n => n.id === selectedNodeId) as any;
-       const targetNode = graphData.nodes.find(n => n.id === pendingLinkTargetId) as any;
+       // 从仿真节点中获取正确的 x/y 坐标
+       const simNodes = simulationRef.current?.nodes() as any[];
+       const sourceNode = simNodes?.find(n => n.id === selectedNodeId);
+       const targetNode = simNodes?.find(n => n.id === pendingLinkTargetId);
 
        if (sourceNode && targetNode && sourceNode.x != null && targetNode.x != null) {
           svg.select(".connection-indicator")

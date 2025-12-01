@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Entry, RelationType, Relationship, RELATION_LABELS, CATEGORY_STYLES, CATEGORIES } from '../types';
-import { Plus, Trash2, Wand2, Network, Save, X, Link2, Search, ChevronsUpDown, Check, Pencil, Undo2, Weight, ListTree, LocateFixed, CopyPlus, Eye } from 'lucide-react';
-import { generateEntryDetails, suggestRelationships } from '../services/geminiService';
+import { Plus, Trash2, Wand2, Network, Save, X, Link2, Search, ChevronsUpDown, Check, Pencil, Undo2, Weight, ListTree, LocateFixed, CopyPlus, Eye, Hash } from 'lucide-react';
+import { getAIService } from '../services/aiService';
 
 interface SidebarProps {
   selectedNode: Entry | null;
@@ -233,11 +233,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (!formData.title) return;
     setLoading(true);
     try {
-      const details = await generateEntryDetails(formData.title);
+      const aiService = getAIService();
+      const details = await aiService.generateEntryDetails(formData.title);
       setFormData(prev => ({ ...prev, ...details }));
     } catch (error) {
       console.error(error);
-      alert("生成内容失败。请确保已配置 API Key。");
+      alert("生成内容失败。请确保已配置 AI 服务。");
     } finally {
       setLoading(false);
     }
@@ -275,33 +276,51 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (!selectedNode) return;
     setLoading(true);
     try {
-      const suggestions = await suggestRelationships(selectedNode, allNodes);
+      const aiService = getAIService();
+      const suggestions = await aiService.suggestRelationships(selectedNode, allNodes);
       
-      // 过滤掉已存在的建议
-      const newSuggestions = suggestions.filter(s => !existingTargetIds.has(s.targetId));
+      // 过滤掉已存在的建议，并添加类型检查
+      const validSuggestions = suggestions.filter(s => {
+        // 确保type是有效的RelationType
+        const isValidType = Object.values(RelationType).includes(s.type);
+        // 确保targetId存在于allNodes中
+        const isValidTarget = allNodes.some(n => n.id === s.targetId);
+        // 确保不是已存在的关系
+        const isNew = !existingTargetIds.has(s.targetId);
+        return isValidType && isValidTarget && isNew;
+      });
 
-      if (newSuggestions.length === 0) {
+      if (validSuggestions.length === 0) {
         alert("AI 未发现新的关联建议，或建议的关联已存在。");
         return;
       }
       
-      const confirmMsg = `找到 ${newSuggestions.length} 个新建议:\n` + 
-        newSuggestions.map(s => `${RELATION_LABELS[s.type]} -> ${allNodes.find(n => n.id === s.targetId)?.title}`).join('\n') +
+      // 生成确认消息，添加安全检查
+      const confirmMsg = `找到 ${validSuggestions.length} 个新建议:\n` + 
+        validSuggestions.map(s => {
+          const relationLabel = RELATION_LABELS[s.type] || '关联';
+          const targetNode = allNodes.find(n => n.id === s.targetId);
+          const targetTitle = targetNode?.title || '未知节点';
+          return `${relationLabel} -> ${targetTitle}`;
+        }).join('\n') +
         `\n\n是否添加这些关联？`;
 
       if (window.confirm(confirmMsg)) {
-        newSuggestions.forEach(s => {
-          onAddLink({
-            id: generateId(),
-            source: selectedNode.id,
-            target: s.targetId,
-            type: s.type,
-            weight: 3 // AI 建议的默认权重
-          });
+        validSuggestions.forEach(s => {
+          // 再次确认数据有效性，防止崩溃
+          if (s.type && s.targetId) {
+            onAddLink({
+              id: generateId(),
+              source: selectedNode.id,
+              target: s.targetId,
+              type: s.type,
+              weight: 3 // AI 建议的默认权重
+            });
+          }
         });
       }
     } catch (error) {
-      console.error(error);
+      console.error('AI建议关系错误:', error);
       alert("获取建议失败。");
     } finally {
       setLoading(false);
@@ -430,7 +449,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             /* 查看模式 */
             <div className="space-y-4 animate-in fade-in duration-300">
                <div>
-                  <div className="flex justify-between items-start gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-md font-medium border border-slate-200 dark:border-slate-700">
+                      {formData.category}
+                    </span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      ID: {formData.id}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-start gap-2 mb-3 pl-1">
                       <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight break-words">
                         {formData.title || '无标题'}
                       </h3>
@@ -450,9 +477,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                       </div>
                   </div>
-                  <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-full font-medium border border-slate-200 dark:border-slate-700">
-                     {formData.category}
-                  </span>
                </div>
                
                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800">

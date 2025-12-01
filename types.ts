@@ -63,7 +63,7 @@ export interface Relationship {
   id: string;
   source: string | Entry; // D3 会将其突变为对象，但我们要先存储 ID
   target: string | Entry;
-  type: RelationType;
+  type: string; // 使用字符串类型，接受任何关系类型值
   weight: number; // 1 到 10，10 代表最强
 }
 

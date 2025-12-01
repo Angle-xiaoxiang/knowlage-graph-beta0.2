@@ -128,21 +128,19 @@ const EntryDetailView: React.FC<EntryDetailViewProps> = ({
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-transparent to-current opacity-5 rounded-bl-full pointer-events-none" style={{ color: style.stroke }}></div>
           
           <div className="relative z-10">
-            <div className="flex items-start justify-between mb-6">
-               <div className="flex items-center gap-3">
-                  <span 
-                    className="px-3 py-1 rounded-full text-sm font-bold border"
-                    style={{ backgroundColor: style.fill, color: style.stroke, borderColor: style.stroke }}
-                  >
-                    {node.category}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 font-mono">
-                    <Hash className="w-3 h-3" /> {node.id}
-                  </span>
-               </div>
+            <div className="flex items-center gap-2 mb-8">
+              <span 
+                className="px-3 py-1 rounded-md text-sm font-bold border"
+                style={{ backgroundColor: style.fill, color: style.stroke, borderColor: style.stroke }}
+              >
+                {node.category}
+              </span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                ID: {node.id}
+              </span>
             </div>
 
-            <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight">
+            <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight pl-1">
               {node.title}
             </h1>
 
