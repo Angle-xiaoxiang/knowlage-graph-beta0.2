@@ -154,6 +154,209 @@ npm run server:dev
 npm run build
 ```
 
+## 部署到服务器
+
+### 1. 生产构建
+
+首先，在本地或服务器上构建生产版本：
+
+```bash
+npm run build
+```
+
+构建完成后，会生成一个`dist`目录，包含所有静态资源。
+
+### 2. 环境配置
+
+在服务器上创建`.env`文件，配置生产环境变量：
+
+```
+# 数据库配置
+DB_HOST=your_production_db_host
+DB_PORT=3306
+DB_USER=your_production_db_user
+DB_PASSWORD=your_production_db_password
+DB_NAME=your_production_db_name
+
+# AI服务配置（可选，根据需要配置）
+GEMINI_API_KEY=your_gemini_api_key
+DOUBAO_API_KEY=your_doubao_api_key
+
+# 服务器配置（可选，用于自定义端口）
+PORT=3000
+```
+
+### 3. 运行生产服务器
+
+#### 使用Node.js直接运行
+
+```bash
+# 安装生产依赖（如果尚未安装）
+npm install --production
+
+# 启动生产服务器
+npm run server:prod
+```
+
+#### 使用PM2进行进程管理（推荐）
+
+1. 安装PM2：
+
+```bash
+npm install -g pm2
+```
+
+2. 创建PM2配置文件`ecosystem.config.js`：
+
+```javascript
+module.exports = {
+  apps: [{
+    name: 'knowlage-graph',
+    script: 'dist/server/index.js',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production'
+    }
+  }]
+};
+```
+
+3. 启动应用：
+
+```bash
+npm run build
+npm install -g pm2
+npm run server:prod-pm2
+```
+
+4. PM2常用命令：
+
+```bash
+# 查看应用状态
+pm run server:pm2-status
+
+# 重启应用
+pm run server:pm2-restart
+
+# 停止应用
+npm run server:pm2-stop
+
+# 查看日志
+npm run server:pm2-logs
+```
+
+### 4. 反向代理设置
+
+#### Nginx配置示例
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 静态资源缓存配置
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        proxy_pass http://localhost:3000;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+}
+```
+
+#### Apache配置示例
+
+```apache
+<VirtualHost *:80>
+    ServerName your-domain.com
+
+    ProxyPass / http://localhost:3000/
+    ProxyPassReverse / http://localhost:3000/
+    ProxyPreserveHost On
+    RequestHeader set X-Forwarded-Proto "http"
+    RequestHeader set X-Real-IP %{REMOTE_ADDR}s
+
+    <Location />
+        Allow from all
+        Order allow,deny
+        AllowOverride All
+    </Location>
+</VirtualHost>
+```
+
+### 5. 安全考虑
+
+1. **数据库安全**：
+   - 使用强密码
+   - 限制数据库用户的访问权限
+   - 考虑使用SSL连接数据库
+
+2. **环境变量安全**：
+   - 不要将敏感信息提交到版本控制
+   - 考虑使用环境变量管理服务
+
+3. **HTTPS配置**：
+   - 为生产服务器配置SSL证书（推荐使用Let's Encrypt）
+   - 强制所有请求使用HTTPS
+
+4. **API安全**：
+   - 考虑添加API密钥验证
+   - 实现速率限制
+   - 验证所有用户输入
+
+### 6. 监控和维护
+
+1. **日志监控**：
+   - 使用PM2日志或其他日志管理工具
+   - 设置日志轮换和保留策略
+
+2. **定期备份**：
+   - 定期备份数据库
+   - 备份重要配置文件
+
+3. **更新依赖**：
+   - 定期更新项目依赖以修复安全漏洞
+   - 使用`npm audit`检查依赖安全
+
+4. **性能监控**：
+   - 监控服务器CPU、内存和磁盘使用情况
+   - 考虑使用APM工具（如New Relic、Datadog）
+
+### 7. 常见问题排查
+
+1. **数据库连接失败**：
+   - 检查数据库服务是否运行
+   - 验证数据库配置是否正确
+   - 检查防火墙设置
+
+2. **端口被占用**：
+   - 使用`lsof -i :3000`（Linux）或`netstat -ano | findstr :3000`（Windows）查看端口占用情况
+   - 杀死占用端口的进程或修改配置使用其他端口
+
+3. **静态资源无法访问**：
+   - 检查构建是否成功
+   - 验证静态资源路径配置
+   - 检查反向代理配置
+
+4. **AI服务调用失败**：
+   - 验证API密钥是否有效
+   - 检查网络连接
+   - 查看服务器日志获取详细错误信息
+
 ## 配置说明
 
 ### 数据库配置
