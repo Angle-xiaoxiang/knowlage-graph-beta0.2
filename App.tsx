@@ -42,17 +42,11 @@ const App: React.FC = () => {
   const [aiConfig, setAiConfig] = useState<AIModelConfig>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_AI_CONFIG);
-      return saved ? JSON.parse(saved) : {
-        type: 'gemini',
-        apiKey: '',
-        modelName: 'gemini-2.5-flash'
-      };
+      const parsedConfig = saved ? JSON.parse(saved) : { type: 'gemini' };
+      // 只保留type字段
+      return { type: parsedConfig.type };
     } catch { 
-      return {
-        type: 'gemini',
-        apiKey: '',
-        modelName: 'gemini-2.5-flash'
-      };
+      return { type: 'gemini' };
     }
   });
   const [aiModels, setAiModels] = useState<Array<{ type: string; name: string; defaultModelName: string }>>([]);
@@ -71,25 +65,18 @@ const App: React.FC = () => {
         
         if (savedConfig) {
           localConfig = JSON.parse(savedConfig);
+          // 只保留type字段
+          localConfig = { type: localConfig.type };
           // 检查本地配置的模型类型是否在后端配置中存在
           const modelConfig = config.models.find(model => model.type === localConfig.type);
           if (modelConfig) {
-            // 更新本地配置，使用后端返回的API密钥和模型名称
-            localConfig = {
-              ...localConfig,
-              apiKey: modelConfig.apiKey,
-              modelName: modelConfig.defaultModelName
-            };
             setAiConfig(localConfig);
-            localStorage.setItem(STORAGE_KEY_AI_CONFIG, JSON.stringify(localConfig));
           }
         } else if (config.models.length > 0) {
           // 如果本地没有配置，使用第一个模型作为默认配置
           const defaultModel = config.models[0];
           const defaultConfig: AIModelConfig = {
-            type: defaultModel.type as 'gemini' | 'doubao',
-            apiKey: defaultModel.apiKey,
-            modelName: defaultModel.defaultModelName
+            type: defaultModel.type as 'gemini' | 'doubao'
           };
           setAiConfig(defaultConfig);
           localStorage.setItem(STORAGE_KEY_AI_CONFIG, JSON.stringify(defaultConfig));
@@ -111,7 +98,15 @@ const App: React.FC = () => {
   // --- Effects ---
   // 初始化和更新AI服务
   useEffect(() => {
-    initAIService(aiConfig);
+    const initializeAIService = async () => {
+      try {
+        await initAIService(aiConfig.type);
+      } catch (error) {
+        console.error("初始化AI服务失败:", error);
+      }
+    };
+
+    initializeAIService();
   }, [aiConfig]);
 
   // 从数据库加载数据

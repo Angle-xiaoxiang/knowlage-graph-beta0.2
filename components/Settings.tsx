@@ -7,8 +7,6 @@ export type AIModel = 'gemini' | 'doubao';
 // AI模型配置接口
 export interface AIModelConfig {
   type: AIModel;
-  apiKey: string;
-  modelName: string;
 }
 
 interface SettingsProps {
@@ -32,23 +30,18 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave, ai
   const modelOptions = aiModels.length > 0 ? 
     aiModels.map(model => ({
       value: model.type,
-      label: model.name,
-      defaultModel: model.defaultModelName
+      label: model.name
     })) :
     [
-      { value: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
-      { value: 'doubao', label: '豆包大模型', defaultModel: 'doubao-pro' }
+      { value: 'gemini', label: 'Google Gemini' },
+      { value: 'doubao', label: '豆包大模型' }
     ];
 
   // 处理模型类型变化
   const handleModelTypeChange = (type: AIModel) => {
-    const selectedModel = aiModels.find(model => model.type === type);
-    setLocalConfig(prev => ({
-      ...prev,
-      type,
-      apiKey: selectedModel?.apiKey || prev.apiKey,
-      modelName: selectedModel?.defaultModelName || prev.modelName
-    }));
+    setLocalConfig({
+      type
+    });
   };
 
   // 处理保存
@@ -102,40 +95,8 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave, ai
                       : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
                   >
                     <div className="font-medium text-slate-900 dark:text-white">{option.label}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      当前模型: {localConfig.type === option.value ? localConfig.modelName : option.defaultModel}
-                    </div>
                   </button>
                 ))}
-              </div>
-            </div>
-
-            {/* API Key */}
-            <div className="space-y-2 mt-6">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                API Key
-              </label>
-              <input
-                type="password"
-                value={localConfig.apiKey}
-                onChange={(e) => setLocalConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                placeholder={`请输入${localConfig.type === 'gemini' ? 'Google Gemini' : '豆包'} API Key`}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {localConfig.type === 'gemini' 
-                  ? '获取API Key: https://aistudio.google.com/app/apikey'
-                  : '获取API Key: https://console.volcengine.com/ark/'}
-              </p>
-            </div>
-
-            {/* 模型名称（只读，从后台配置获取） */}
-            <div className="space-y-2 mt-4">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                当前模型名称
-              </label>
-              <div className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                {localConfig.modelName}
               </div>
             </div>
           </div>

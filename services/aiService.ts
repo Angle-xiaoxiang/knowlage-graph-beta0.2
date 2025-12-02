@@ -1,7 +1,14 @@
 import { Entry, RelationType } from "../types";
 import GeminiService from "./geminiService";
 import DoubaoService from "./doubaoService";
-import { AIModelConfig } from "../components/Settings";
+import { apiService } from "./apiService";
+
+// 定义AI服务配置接口
+interface AIServiceConfig {
+  type: "gemini" | "doubao";
+  apiKey: string;
+  modelName: string;
+}
 
 // 定义AI服务接口
 interface AIService {
@@ -12,9 +19,9 @@ interface AIService {
 // AI服务管理器
 class AIServiceManager {
   private currentService: AIService | null = null;
-  private config: AIModelConfig;
+  private config: AIServiceConfig;
 
-  constructor(config: AIModelConfig) {
+  constructor(config: AIServiceConfig) {
     this.config = config;
     this.initService();
   }
@@ -34,7 +41,7 @@ class AIServiceManager {
   }
 
   // 更新配置
-  updateConfig(config: AIModelConfig): void {
+  updateConfig(config: AIServiceConfig): void {
     this.config = config;
     this.initService();
   }
@@ -67,13 +74,36 @@ class AIServiceManager {
 // 导出单例实例
 let aiServiceInstance: AIServiceManager | null = null;
 
-export const initAIService = (config: AIModelConfig): AIServiceManager => {
-  if (!aiServiceInstance) {
-    aiServiceInstance = new AIServiceManager(config);
-  } else {
-    aiServiceInstance.updateConfig(config);
+// 初始化AI服务，从后端获取完整配置
+export const initAIService = async (modelType: "gemini" | "doubao"): Promise<AIServiceManager> => {
+  try {
+    // 从后端获取AI配置
+    const aiConfig = await apiService.getAIConfig();
+    // 找到对应的模型配置
+    const modelConfig = aiConfig.models.find(model => model.type === modelType);
+    
+    if (!modelConfig) {
+      throw new Error(`Model ${modelType} not configured`);
+    }
+    
+    // 创建完整的服务配置
+    const serviceConfig: AIServiceConfig = {
+      type: modelType,
+      apiKey: modelConfig.apiKey,
+      modelName: modelConfig.defaultModelName
+    };
+    
+    if (!aiServiceInstance) {
+      aiServiceInstance = new AIServiceManager(serviceConfig);
+    } else {
+      aiServiceInstance.updateConfig(serviceConfig);
+    }
+    
+    return aiServiceInstance;
+  } catch (error) {
+    console.error("Failed to initialize AI service:", error);
+    throw error;
   }
-  return aiServiceInstance;
 };
 
 export const getAIService = (): AIServiceManager => {
