@@ -1,5 +1,17 @@
 import { Entry, Relationship, GraphData } from '../types';
 
+// AI模型配置类型定义
+export interface AIServiceConfig {
+  type: 'gemini' | 'doubao';
+  name: string;
+  apiKey: string;
+  defaultModelName: string;
+}
+
+export interface AIConfig {
+  models: AIServiceConfig[];
+}
+
 // API基础URL
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -61,6 +73,11 @@ export const apiService = {
     return request<Entry[]>('/entries');
   },
 
+  // 获取所有分类
+  getAllCategories: async (): Promise<Category[]> => {
+    return request<Category[]>('/categories');
+  },
+
   // 获取所有关联关系
   getAllRelationships: async (): Promise<Relationship[]> => {
     return request<Relationship[]>('/relationships');
@@ -115,5 +132,10 @@ export const apiService = {
     return request<{ success: boolean; id: string }>(`/relationships/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // 获取AI模型配置
+  getAIConfig: async (): Promise<AIConfig> => {
+    return request<AIConfig>('/ai-config');
   }
 };

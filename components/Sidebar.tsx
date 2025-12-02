@@ -8,6 +8,7 @@ interface SidebarProps {
   selectedNode: Entry | null;
   allNodes: Entry[];
   links: Relationship[];
+  categories: Category[];
   onAddNode: (node: Entry) => void;
   onUpdateNode: (node: Entry) => void;
   onDeleteNode: (id: string) => void;
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   selectedNode,
   allNodes,
   links,
+  categories,
   onAddNode,
   onUpdateNode,
   onDeleteNode,
@@ -56,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // 表单状态
   const [formData, setFormData] = useState<Partial<Entry>>({
     title: '',
-    category: '概念',
+    category: 0,
     description: '',
     tags: []
   });
@@ -80,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const resetForm = () => {
     setFormData({
       title: initialTitle || '', // 如果有初始标题则使用
-      category: '概念',
+      category: categories.length > 0 ? categories[0].id : 0,
       description: '',
       tags: []
     });
@@ -318,6 +320,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             });
           }
         });
+        // AI 建议的关联关系添加后，自动定位到当前选中节点
+        onCenterNode();
       }
     } catch (error) {
       console.error('AI建议关系错误:', error);
@@ -366,6 +370,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
     
     resetLinkForm();
+    // 关联关系建立后，自动定位到当前选中节点
+    onCenterNode();
   };
 
   const handleEditLinkClick = (link: Relationship) => {
@@ -450,9 +456,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="space-y-4 animate-in fade-in duration-300">
                <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-md font-medium border border-slate-200 dark:border-slate-700">
-                      {formData.category}
-                    </span>
+                    {(() => {
+                      const categoryObj = categories.find(cat => cat.id === formData.category) || { name: '其他', id: 0 };
+                      const categoryName = categoryObj.name;
+                      return (
+                        <span 
+                          className="inline-block px-2.5 py-0.5 text-xs rounded-md font-medium border"
+                          style={{
+                            backgroundColor: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).fill,
+                            color: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).stroke,
+                            borderColor: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).stroke
+                          }}
+                        >
+                          {categoryName}
+                        </span>
+                      );
+                    })()}
                     <span className="text-sm text-slate-500 dark:text-slate-400">
                       ID: {formData.id}
                     </span>
@@ -529,11 +548,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div className="relative">
                   <select
                     value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    onChange={e => setFormData({ ...formData, category: parseInt(e.target.value) })}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
                   >
-                    {CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
                   <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />

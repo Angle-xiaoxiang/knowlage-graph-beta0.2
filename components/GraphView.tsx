@@ -13,6 +13,7 @@ export interface GraphViewHandle {
 interface GraphViewProps {
   nodes: Entry[];
   links: Relationship[];
+  categories: Category[];
   onNodeClick: (node: Entry) => void;
   onBackgroundClick: () => void;
   width: number;
@@ -45,10 +46,11 @@ const PENDING_LINK_COLOR = '#f97316'; // 橙色
 const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({ 
   nodes, 
   links, 
+  categories,
   onNodeClick, 
   onBackgroundClick,
   width, 
-  height, 
+  height,
   selectedNodeId,
   hoveredNodeId,
   setHoveredNodeId,
@@ -57,6 +59,10 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
   onNodeDrop,
   pendingLinkTargetId
 }, ref) => {
+  // 创建分类映射，将分类ID映射到分类名称
+  const categoryMap = useMemo(() => {
+    return new Map(categories.map(cat => [cat.id, cat.name]));
+  }, [categories]);
   // 添加调试日志
   console.log('GraphView渲染参数:', {
     nodesCount: nodes.length,
@@ -127,16 +133,19 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
         const svg = d3.select(svgRef.current);
         const currentTransform = d3.zoomTransform(svgRef.current);
         
-        // 如果当前比例太小，则稍微放大，否则保持当前比例
-        const targetScale = Math.max(currentTransform.k, 1.5); 
-        
-        // 考虑到侧边栏宽度(400px)，我们将中心点向左偏移，以确保节点在侧边栏左侧的可见区域居中
+        // 考虑到侧边栏宽度，将选中节点定位到屏幕中心偏左位置
         const sidebarWidth = 400;
         const visibleWidth = width > 768 ? width - sidebarWidth : width;
-        const centerX = visibleWidth / 2;
+        
+        // 目标位置：屏幕中心偏左，约占可见宽度的40%位置
+        const targetX = visibleWidth * 0.4;
+        const targetY = height / 2;
+        
+        // 保持当前缩放比例，或至少为1.5
+        const targetScale = Math.max(currentTransform.k, 1.5); 
 
-        const x = -targetNode.x * targetScale + centerX;
-        const y = -targetNode.y * targetScale + height / 2;
+        const x = targetX - targetNode.x * targetScale;
+        const y = targetY - targetNode.y * targetScale;
         
         const transform = d3.zoomIdentity.translate(x, y).scale(targetScale);
 
@@ -151,13 +160,42 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
   // 缓存数据准备逻辑并与先前的位置合并
   const graphData = useMemo(() => {
     // 1. 准备节点（保留位置，确保所有节点都有 x/y 坐标）
-    const newNodes = nodes.map(d => {
+    const newNodes = nodes.map((d, index) => {
       const prev = prevNodesRef.current.get(d.id);
       if (prev) {
         return { ...d, x: prev.x, y: prev.y, vx: 0, vy: 0 };
       }
-      // 为新节点添加默认坐标，防止渲染时 x/y 为 undefined
-      return { ...d, x: width / 2, y: height / 2, vx: 0, vy: 0 };
+      // 为新节点添加均匀分布的初始坐标，避免初始布局拥挤
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      // 根据节点数量动态调整布局策略
+      if (nodes.length <= 1) {
+        // 只有一个节点时，放在中心
+        return { ...d, x: centerX, y: centerY, vx: 0, vy: 0 };
+      } else if (nodes.length <= 5) {
+        // 少量节点时，使用较大半径的圆形布局
+        const radius = Math.min(width, height) * 0.35;
+        const angle = (index / nodes.length) * 2 * Math.PI;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        return { ...d, x, y, vx: 0, vy: 0 };
+      } else {
+        // 多个节点时，使用带随机扰动的圆形布局，更自然
+        const baseRadius = Math.min(width, height) * 0.3;
+        // 添加随机半径扰动，范围为基础半径的 ±20%
+        const radiusVariation = baseRadius * 0.2;
+        const radius = baseRadius + (Math.random() - 0.5) * radiusVariation;
+        
+        // 均匀分布的角度，添加轻微随机扰动
+        const baseAngle = (index / nodes.length) * 2 * Math.PI;
+        const angleVariation = 0.1; // 10% 的角度扰动
+        const angle = baseAngle + (Math.random() - 0.5) * angleVariation;
+        
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        return { ...d, x, y, vx: 0, vy: 0 };
+      }
     });
 
     // 2. 准备连线
@@ -171,7 +209,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
     return <div className="w-full h-full flex items-center justify-center text-gray-500">加载中...</div>;
   }
 
-  // 新增：自动确保选中节点在屏幕可见区域内
+  // 确保选中节点始终保持在屏幕中心偏左的位置
   useEffect(() => {
     if (!selectedNodeId || !svgRef.current || !zoomBehaviorRef.current || !simulationRef.current) return;
 
@@ -183,44 +221,28 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
 
       if (targetNode) {
         const svg = d3.select(svgRef.current);
-        const transform = d3.zoomTransform(svgRef.current);
+        const currentTransform = d3.zoomTransform(svgRef.current);
 
-        // 计算节点在当前视口中的屏幕坐标
-        const screenX = targetNode.x * transform.k + transform.x;
-        const screenY = targetNode.y * transform.k + transform.y;
-
-        // 定义安全区域
-        // 侧边栏宽度约 400px，顶部有 header 约 80px
+        // 考虑到侧边栏宽度，将选中节点定位到屏幕中心偏左位置
         const sidebarWidth = 400;
-        const topPadding = 80;
-        const padding = 60; // 通用内边距
+        const visibleWidth = width > 768 ? width - sidebarWidth : width;
+        
+        // 目标位置：屏幕中心偏左，约占可见宽度的40%位置
+        const targetX = visibleWidth * 0.4;
+        const targetY = height / 2;
+        
+        // 保持当前缩放比例，或至少为1.5
+        const targetScale = Math.max(currentTransform.k, 1.5);
 
-        // 如果屏幕够宽，右边界要减去侧边栏宽度
-        const safeRight = width > 768 ? width - sidebarWidth : width;
-        const safeBottom = height;
+        // 计算所需的平移值
+        const newTx = targetX - targetNode.x * targetScale;
+        const newTy = targetY - targetNode.y * targetScale;
 
-        // 检查节点是否在安全区域外
-        const isOutsideX = screenX < padding || screenX > safeRight - padding;
-        const isOutsideY = screenY < topPadding || screenY > safeBottom - padding;
-
-        // 如果在安全区域外，则平滑移动视图将其置于安全区域中心
-        if (isOutsideX || isOutsideY) {
-          const targetScale = transform.k;
-          
-          // 计算目标中心点（安全区域的中心）
-          const centerX = safeRight / 2;
-          const centerY = (height + topPadding) / 2;
-
-          // 反推所需的 Translate 值
-          // newTx = centerX - nodeWorldX * k
-          const newTx = centerX - targetNode.x * targetScale;
-          const newTy = centerY - targetNode.y * targetScale;
-
-          svg.transition()
-            .duration(600) // 比完全重置稍微快一点，更轻量
-            .ease(d3.easeCubicOut)
-            .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(newTx, newTy).scale(targetScale));
-        }
+        // 平滑过渡到目标位置
+        svg.transition()
+          .duration(600)
+          .ease(d3.easeCubicOut)
+          .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(newTx, newTy).scale(targetScale));
       }
     }, 50);
 
@@ -643,11 +665,13 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
 
     svg.selectAll("circle")
       .attr("fill", (d: any) => {
-         const style = CATEGORY_STYLES[d.category] || DEFAULT_NODE_STYLE;
+         const categoryName = categoryMap.get(d.category) || '其他';
+         const style = CATEGORY_STYLES[categoryName] || DEFAULT_NODE_STYLE;
          return style.fill;
       })
       .attr("stroke", (d: any) => {
-         const style = CATEGORY_STYLES[d.category] || DEFAULT_NODE_STYLE;
+         const categoryName = categoryMap.get(d.category) || '其他';
+         const style = CATEGORY_STYLES[categoryName] || DEFAULT_NODE_STYLE;
          return style.stroke;
       })
       .attr("stroke-width", (d: any) => {

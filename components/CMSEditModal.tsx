@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { Entry, EntryModule, CATEGORIES } from '../types';
-import { X, Plus, Trash2, Save, Sparkles, Box, Lock, Hash } from 'lucide-react';
+import { X, Plus, Trash2, Save, Sparkles, Box, Lock } from 'lucide-react';
+import { Category } from '../types';
 
 interface CMSEditModalProps {
   node: Entry;
   isOpen: boolean;
   onClose: () => void;
   onSave: (updatedNode: Entry) => void;
+  categories: Category[];
 }
 
-const CMSEditModal: React.FC<CMSEditModalProps> = ({ node, isOpen, onClose, onSave }) => {
+const CMSEditModal: React.FC<CMSEditModalProps> = ({ node, isOpen, onClose, onSave, categories }) => {
   const [formData, setFormData] = useState<Entry>(node);
   
   useEffect(() => {
@@ -90,12 +92,12 @@ const CMSEditModal: React.FC<CMSEditModalProps> = ({ node, isOpen, onClose, onSa
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">所属分类</label>
                 <select 
-                  value={formData.category}
-                  onChange={e => setFormData({...formData, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                    value={formData.category}
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
               </div>
             </div>
             <div>

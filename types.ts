@@ -16,6 +16,13 @@ export const RELATION_LABELS: Record<RelationType, string> = {
   [RelationType.HOMONYM]: '同名'
 };
 
+// 分类类型定义
+export interface Category {
+  id: number;
+  name: string;
+  description?: string;
+}
+
 // 下拉菜单的预定义分类
 export const CATEGORIES = [
   '概念', '科学', '技术', '人物', '地点', '组织', '事件', '艺术', '历史', '自然', '社会', '物品', '其他'
@@ -49,7 +56,7 @@ export interface EntryModule {
 export interface Entry {
   id: string;
   title: string;
-  category: string;
+  category: number;
   description: string;
   tags: string[];
   x?: number;

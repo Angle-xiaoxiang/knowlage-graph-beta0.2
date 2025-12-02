@@ -16,9 +16,10 @@ interface SettingsProps {
   onClose: () => void;
   config: AIModelConfig;
   onSave: (config: AIModelConfig) => void;
+  aiModels: Array<{ type: string; name: string; defaultModelName: string }>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave }) => {
+const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave, aiModels }) => {
   const [localConfig, setLocalConfig] = useState<AIModelConfig>(config);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -27,19 +28,26 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave }) 
     setLocalConfig(config);
   }, [config]);
 
-  // 模型选项
-  const modelOptions = [
-    { value: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
-    { value: 'doubao', label: '豆包大模型', defaultModel: 'doubao-pro' }
-  ] as const;
+  // 使用从后端获取的模型选项
+  const modelOptions = aiModels.length > 0 ? 
+    aiModels.map(model => ({
+      value: model.type,
+      label: model.name,
+      defaultModel: model.defaultModelName
+    })) :
+    [
+      { value: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
+      { value: 'doubao', label: '豆包大模型', defaultModel: 'doubao-pro' }
+    ];
 
   // 处理模型类型变化
   const handleModelTypeChange = (type: AIModel) => {
-    const selectedModel = modelOptions.find(opt => opt.value === type);
+    const selectedModel = aiModels.find(model => model.type === type);
     setLocalConfig(prev => ({
       ...prev,
       type,
-      modelName: selectedModel?.defaultModel || prev.modelName
+      apiKey: selectedModel?.apiKey || prev.apiKey,
+      modelName: selectedModel?.defaultModelName || prev.modelName
     }));
   };
 
@@ -121,18 +129,14 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave }) 
               </p>
             </div>
 
-            {/* 模型名称 */}
+            {/* 模型名称（只读，从后台配置获取） */}
             <div className="space-y-2 mt-4">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                模型名称
+                当前模型名称
               </label>
-              <input
-                type="text"
-                value={localConfig.modelName}
-                onChange={(e) => setLocalConfig(prev => ({ ...prev, modelName: e.target.value }))}
-                placeholder="模型名称"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
+              <div className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                {localConfig.modelName}
+              </div>
             </div>
           </div>
         </div>

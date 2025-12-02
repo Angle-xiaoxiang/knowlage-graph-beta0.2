@@ -62,6 +62,12 @@ testConnection();
 // 获取所有百科条目
 app.get('/api/entries', async (req, res) => {
   try {
+    // 先获取所有分类，用于后续映射
+    const [categories] = await pool.execute(
+      'SELECT id, name FROM buji_land_baike_categories'
+    );
+    const categoryMap = new Map((categories as any[]).map(cat => [cat.id, cat.name]));
+    
     const [rows] = await pool.execute(
       'SELECT id, term AS title, disambiguation AS description, label_ids AS category FROM buji_land_baike WHERE is_deleted = 0'
     );
@@ -71,13 +77,27 @@ app.get('/api/entries', async (req, res) => {
       ...entry,
       id: entry.id?.toString() || '',
       tags: [], // 暂时为空，根据用户要求不使用tags字段
-      category: entry.category?.toString() || '其他' // 使用label_ids作为分类
+      category: parseInt(entry.category) || 0 // 使用label_ids作为分类ID
     }));
     
     res.json(entries);
   } catch (error) {
     console.error('Error fetching entries:', error);
     res.status(500).json({ error: 'Failed to fetch entries' });
+  }
+});
+
+// 获取所有分类
+app.get('/api/categories', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM buji_land_baike_categories WHERE is_deleted = 0 ORDER BY id'
+    );
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Failed to fetch categories' });
   }
 });
 
@@ -115,6 +135,12 @@ app.get('/api/relationships', async (req, res) => {
 // 获取完整的图谱数据
 app.get('/api/graph-data', async (req, res) => {
   try {
+    // 先获取所有分类，用于后续映射
+    const [categories] = await pool.execute(
+      'SELECT id, name FROM buji_land_baike_categories'
+    );
+    const categoryMap = new Map((categories as any[]).map(cat => [cat.id, cat.name]));
+    
     // 获取所有条目，根据用户要求使用指定字段
     const [entries] = await pool.execute(
       'SELECT id, term AS title, disambiguation AS description, label_ids AS category FROM buji_land_baike WHERE is_deleted = 0'
@@ -132,7 +158,7 @@ app.get('/api/graph-data', async (req, res) => {
       title: entry.title || '无标题',
       description: entry.description || '', // 确保description是字符串，不为null
       tags: [], // 暂时为空，根据用户要求不使用tags字段
-      category: entry.category?.toString() || '其他' // 使用label_ids作为分类
+      category: parseInt(entry.category) || 0 // 使用label_ids作为分类ID
     }));
     
     // 创建节点ID集合，用于验证连线的有效性
@@ -176,7 +202,7 @@ app.post('/api/entries', async (req, res) => {
     
     const [result] = await pool.execute(
       'INSERT INTO buji_land_baike (term, description, label_ids, status) VALUES (?, ?, ?, 0)',
-      [title, description, JSON.stringify(tags || [])]
+      [title, description, category]
     );
     
     res.json({ id: (result as any).insertId, title, description, tags, category });
@@ -259,7 +285,7 @@ app.put('/api/entries/:id', async (req, res) => {
     
     await pool.execute(
       'UPDATE buji_land_baike SET term = ?, description = ?, label_ids = ? WHERE id = ?',
-      [title, description, JSON.stringify(tags || []), id]
+      [title, description, category, id]
     );
     
     res.json({ id, title, description, tags, category });
@@ -388,6 +414,34 @@ app.delete('/api/relationships/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting relationship:', error);
     res.status(500).json({ error: 'Failed to delete relationship' });
+  }
+});
+
+// 获取AI模型配置
+app.get('/api/ai-config', async (req, res) => {
+  try {
+    // 从环境变量中获取AI模型配置
+    const aiConfig = {
+      models: [
+        {
+          type: 'gemini',
+          name: 'Google Gemini',
+          apiKey: process.env.GEMINI_API_KEY || '',
+          defaultModelName: process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash'
+        },
+        {
+          type: 'doubao',
+          name: '豆包大模型',
+          apiKey: process.env.DOUBAO_API_KEY || '',
+          defaultModelName: process.env.DOUBAO_MODEL_NAME || 'doubao-pro'
+        }
+      ]
+    };
+    
+    res.json(aiConfig);
+  } catch (error) {
+    console.error('Error fetching AI config:', error);
+    res.status(500).json({ error: 'Failed to fetch AI config' });
   }
 });
 

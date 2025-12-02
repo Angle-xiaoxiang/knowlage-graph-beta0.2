@@ -7,6 +7,7 @@ interface EntryDetailViewProps {
   node: Entry;
   allNodes: Entry[];
   links: Relationship[];
+  categories: Category[];
   onBack: () => void;
   onEdit: (node: Entry) => void;
   onNodeClick: (node: Entry) => void;
@@ -16,11 +17,18 @@ const EntryDetailView: React.FC<EntryDetailViewProps> = ({
   node, 
   allNodes, 
   links, 
+  categories,
   onBack, 
   onEdit,
   onNodeClick
 }) => {
-  const style = CATEGORY_STYLES[node.category] || CATEGORY_STYLES['其他'];
+  // 创建分类映射，将分类ID映射到分类名称
+  const categoryMap = useMemo(() => {
+    return new Map(categories.map(cat => [cat.id, cat.name]));
+  }, [categories]);
+  
+  const categoryName = categoryMap.get(node.category) || '其他';
+  const style = CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他'];
 
   // 获取该词条发出的关系 (Source is current node)
   const outgoingLinks = useMemo(() => {
@@ -58,7 +66,8 @@ const EntryDetailView: React.FC<EntryDetailViewProps> = ({
           const otherNode = getNodeInfo(otherId);
           if (!otherNode) return null;
 
-          const otherStyle = CATEGORY_STYLES[otherNode.category] || CATEGORY_STYLES['其他'];
+          const otherCategoryName = categoryMap.get(otherNode.category) || '其他';
+          const otherStyle = CATEGORY_STYLES[otherCategoryName] || CATEGORY_STYLES['其他'];
 
           return (
             <div 

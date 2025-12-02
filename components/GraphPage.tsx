@@ -9,6 +9,7 @@ import { Plus, Search, Database, LayoutGrid, Network, Minus, RotateCcw, Unplug, 
 interface GraphPageProps {
   nodes: Entry[];
   links: Relationship[];
+  categories: Category[];
   theme: 'light' | 'dark' | 'system';
   isDarkMode: boolean;
   onAddNode: (node: Entry) => void;
@@ -23,12 +24,22 @@ interface GraphPageProps {
   onNavigateToDetail: (id: string) => void;
 }
 
-const GraphPage: React.FC<GraphPageProps> = ({
-  nodes, links, theme, isDarkMode, 
-  onAddNode, onUpdateNode, onDeleteNode, 
-  onAddLink, onUpdateLink, onDeleteLink,
-  onToggleTheme, onResetData,
-  onNavigateToCMS, onNavigateToDetail
+const GraphPage: React.FC<GraphPageProps> = ({ 
+  nodes, 
+  links, 
+  categories, 
+  theme, 
+  isDarkMode, 
+  onAddNode, 
+  onUpdateNode, 
+  onDeleteNode, 
+  onAddLink, 
+  onUpdateLink, 
+  onDeleteLink, 
+  onToggleTheme, 
+  onResetData, 
+  onNavigateToCMS, 
+  onNavigateToDetail 
 }) => {
   const [viewMode, setViewMode] = useState<'graph' | 'kanban'>('graph');
   const [selectedNode, setSelectedNode] = useState<Entry | null>(null);
@@ -131,6 +142,17 @@ const GraphPage: React.FC<GraphPageProps> = ({
       n.tags.some(t => t.toLowerCase().includes(query))
     );
   }, [nodes, searchQuery]);
+
+  // 当关联关系变化时，自动定位到当前选中节点
+  React.useEffect(() => {
+    if (selectedNode && viewMode === 'graph' && graphRef.current) {
+      // 延迟执行，确保simulation有足够时间更新节点位置
+      const timer = setTimeout(() => {
+        graphRef.current?.centerNode(selectedNode.id);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [links, selectedNode, viewMode]);
 
   return (
     <div className="w-full h-full relative" ref={containerRef} onClick={() => setShowSearchDropdown(false)}>
@@ -325,9 +347,10 @@ const GraphPage: React.FC<GraphPageProps> = ({
               selectedNode={selectedNode}
               allNodes={nodes}
               links={links}
+              categories={categories}
               onAddNode={onAddNode}
               onUpdateNode={onUpdateNode}
-              onDeleteNode={(id) => { onDeleteNode(id); setShowSidebar(false); }}
+              onDeleteNode={onDeleteNode}
               onAddLink={onAddLink}
               onUpdateLink={onUpdateLink}
               onDeleteLink={onDeleteLink}

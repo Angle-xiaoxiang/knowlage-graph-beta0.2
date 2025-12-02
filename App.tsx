@@ -18,6 +18,7 @@ const App: React.FC = () => {
   // --- Data State ---
   const [nodes, setNodes] = useState<Entry[]>([]);
   const [links, setLinks] = useState<Relationship[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -54,7 +55,52 @@ const App: React.FC = () => {
       };
     }
   });
+  const [aiModels, setAiModels] = useState<Array<{ type: string; name: string; defaultModelName: string }>>([]);
   const [showSettings, setShowSettings] = useState(false);
+
+  // 获取AI模型配置
+  useEffect(() => {
+    const fetchAIConfig = async () => {
+      try {
+        const config = await apiService.getAIConfig();
+        setAiModels(config.models);
+        
+        // 获取本地配置
+        const savedConfig = localStorage.getItem(STORAGE_KEY_AI_CONFIG);
+        let localConfig: AIModelConfig;
+        
+        if (savedConfig) {
+          localConfig = JSON.parse(savedConfig);
+          // 检查本地配置的模型类型是否在后端配置中存在
+          const modelConfig = config.models.find(model => model.type === localConfig.type);
+          if (modelConfig) {
+            // 更新本地配置，使用后端返回的API密钥和模型名称
+            localConfig = {
+              ...localConfig,
+              apiKey: modelConfig.apiKey,
+              modelName: modelConfig.defaultModelName
+            };
+            setAiConfig(localConfig);
+            localStorage.setItem(STORAGE_KEY_AI_CONFIG, JSON.stringify(localConfig));
+          }
+        } else if (config.models.length > 0) {
+          // 如果本地没有配置，使用第一个模型作为默认配置
+          const defaultModel = config.models[0];
+          const defaultConfig: AIModelConfig = {
+            type: defaultModel.type as 'gemini' | 'doubao',
+            apiKey: defaultModel.apiKey,
+            modelName: defaultModel.defaultModelName
+          };
+          setAiConfig(defaultConfig);
+          localStorage.setItem(STORAGE_KEY_AI_CONFIG, JSON.stringify(defaultConfig));
+        }
+      } catch (error) {
+        console.error('获取AI配置失败:', error);
+      }
+    };
+
+    fetchAIConfig();
+  }, []);
 
   const graphRef = useRef<GraphViewHandle>(null);
   const kanbanRef = useRef<KanbanViewHandle>(null);
@@ -76,14 +122,36 @@ const App: React.FC = () => {
       setErrorDetails(null);
       try {
         console.log('开始从数据库加载数据...');
-        // 使用apiService获取数据
-        const graphData = await apiService.getGraphData();
+        // 并行获取数据和分类
+        const [graphData, categoriesData] = await Promise.all([
+          apiService.getGraphData(),
+          apiService.getAllCategories()
+        ]);
+        
         console.log('成功获取到数据:', {
           nodesCount: graphData.nodes?.length || 0,
-          linksCount: graphData.links?.length || 0
+          linksCount: graphData.links?.length || 0,
+          categoriesCount: categoriesData.length
         });
+        
+        // 定义分类的期望顺序
+        const categoryOrder = [
+          '概念', '科学', '技术', '人物', '地点', '组织', '事件', '艺术', '历史', '自然', '社会', '物品', '其他'
+        ];
+        
+        // 按照期望顺序对分类进行排序
+        const sortedCategories = [...categoriesData].sort((a, b) => {
+          const indexA = categoryOrder.indexOf(a.name);
+          const indexB = categoryOrder.indexOf(b.name);
+          // 如果分类不在预定义列表中，将其放在最后
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
+        
         setNodes(graphData.nodes);
         setLinks(graphData.links);
+        setCategories(sortedCategories);
       } catch (err) {
         console.error('❌ 加载数据失败:', err);
         let errorMsg = '加载数据失败';
@@ -120,6 +188,8 @@ const App: React.FC = () => {
         console.log('使用本地种子数据作为备用...');
         setNodes(seedNodes);
         setLinks(seedLinks);
+        // 分类加载失败时使用默认分类
+        setCategories([]);
       } finally {
         setIsLoading(false);
       }
@@ -394,6 +464,7 @@ const App: React.FC = () => {
               ref={graphRef}
               nodes={nodes}
               links={links} 
+              categories={categories}
               onNodeClick={handleNodeClick}
               onBackgroundClick={handleBackgroundClick}
               width={Math.max(viewport.width, 800)} // 确保至少有800px宽度
@@ -411,6 +482,7 @@ const App: React.FC = () => {
               <KanbanView 
                 ref={kanbanRef}
                 nodes={nodes}
+                categories={categories}
                 onNodeSelect={handleNodeClick}
                 onNodeUpdate={handleUpdateNode}
                 selectedNodeId={selectedNode?.id}
@@ -478,7 +550,9 @@ const App: React.FC = () => {
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl max-h-64 overflow-y-auto overflow-x-hidden z-50">
                    {searchResults.length > 0 ? (
                      searchResults.map(node => {
-                       const style = CATEGORY_STYLES[node.category] || CATEGORY_STYLES['其他'];
+                       const categoryObj = categories.find(cat => cat.id === node.category) || { name: '其他', id: 0 };
+                       const categoryName = categoryObj.name;
+                       const style = CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他'];
                        return (
                          <div 
                            key={node.id}
@@ -570,6 +644,7 @@ const App: React.FC = () => {
               selectedNode={selectedNode}
               allNodes={nodes}
               links={links}
+              categories={categories}
               onAddNode={handleAddNode}
               onUpdateNode={handleUpdateNode}
               onDeleteNode={handleDeleteNode}
@@ -600,6 +675,7 @@ const App: React.FC = () => {
         onClose={() => setShowSettings(false)}
         config={aiConfig}
         onSave={setAiConfig}
+        aiModels={aiModels}
       />
     </div>
   );

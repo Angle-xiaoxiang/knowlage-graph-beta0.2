@@ -6,6 +6,7 @@ import CMSEditModal from './CMSEditModal';
 
 interface CMSPageProps {
   nodes: Entry[];
+  categories: Category[];
   onDeleteNode: (id: string) => void;
   onAddNode: () => void;
   onUpdateNode: (node: Entry) => void; // Added prop
@@ -13,7 +14,7 @@ interface CMSPageProps {
   onNavigateToDetail: (id: string) => void;
 }
 
-const CMSPage: React.FC<CMSPageProps> = ({ nodes, onDeleteNode, onAddNode, onUpdateNode, onNavigateToGraph, onNavigateToDetail }) => {
+const CMSPage: React.FC<CMSPageProps> = ({ nodes, categories, onDeleteNode, onAddNode, onUpdateNode, onNavigateToGraph, onNavigateToDetail }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   
@@ -21,10 +22,16 @@ const CMSPage: React.FC<CMSPageProps> = ({ nodes, onDeleteNode, onAddNode, onUpd
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<Entry | null>(null);
 
+  // 创建分类映射，将分类名称映射到分类ID
+  const categoryNameToIdMap = new Map(categories.map(cat => [cat.name, cat.id]));
+  // 创建分类映射，将分类ID映射到分类名称
+  const categoryIdToNameMap = new Map(categories.map(cat => [cat.id, cat.name]));
+  
   const filteredNodes = nodes.filter(node => {
     const matchesSearch = node.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           node.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'All' || node.category === filterCategory;
+    const matchesCategory = filterCategory === 'All' || 
+                           (filterCategory !== 'All' && node.category === categoryNameToIdMap.get(filterCategory));
     return matchesSearch && matchesCategory;
   });
 
@@ -89,7 +96,7 @@ const CMSPage: React.FC<CMSPageProps> = ({ nodes, onDeleteNode, onAddNode, onUpd
               </div>
               <div>
                 <div className="text-sm text-slate-500 dark:text-slate-400">分类数量</div>
-                <div className="text-2xl font-bold text-slate-800 dark:text-white">{CATEGORIES.length}</div>
+                <div className="text-2xl font-bold text-slate-800 dark:text-white">{categories.length}</div>
               </div>
            </div>
 
@@ -125,8 +132,8 @@ const CMSPage: React.FC<CMSPageProps> = ({ nodes, onDeleteNode, onAddNode, onUpd
                onChange={(e) => setFilterCategory(e.target.value)}
              >
                <option value="All">所有分类</option>
-               {CATEGORIES.map(cat => (
-                 <option key={cat} value={cat}>{cat}</option>
+               {categories.map(cat => (
+                 <option key={cat.id} value={cat.name}>{cat.name}</option>
                ))}
              </select>
            </div>
@@ -147,7 +154,8 @@ const CMSPage: React.FC<CMSPageProps> = ({ nodes, onDeleteNode, onAddNode, onUpd
                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                  {filteredNodes.length > 0 ? (
                    filteredNodes.map(node => {
-                     const style = CATEGORY_STYLES[node.category] || CATEGORY_STYLES['其他'];
+                     const categoryName = categoryIdToNameMap.get(node.category) || '其他';
+                     const style = CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他'];
                      return (
                        <tr key={node.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                          <td className="px-6 py-4">
@@ -162,7 +170,7 @@ const CMSPage: React.FC<CMSPageProps> = ({ nodes, onDeleteNode, onAddNode, onUpd
                          <td className="px-6 py-4">
                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border" 
                              style={{ backgroundColor: style.fill, color: style.stroke, borderColor: style.stroke + '40' }}>
-                             {node.category}
+                             {categoryName}
                            </span>
                          </td>
                          <td className="px-6 py-4 text-slate-600 dark:text-slate-400 truncate max-w-xs" title={node.description}>
