@@ -150,8 +150,18 @@ npm run server:dev
 
 ### 构建项目
 
+项目构建分为前端构建和服务器构建两部分：
+
 ```bash
+# 同时构建前端和服务器代码（推荐）
 npm run build
+
+# 或者分别构建
+# 构建前端代码
+npm run build:client
+
+# 构建服务器代码
+npm run build:server
 ```
 
 ## 部署到服务器
@@ -164,7 +174,7 @@ npm run build
 npm run build
 ```
 
-构建完成后，会生成一个`dist`目录，包含所有静态资源。
+构建完成后，会生成一个`dist`目录，包含所有静态资源和服务器代码。
 
 ### 2. 环境配置
 
@@ -191,8 +201,11 @@ PORT=3000
 #### 使用Node.js直接运行
 
 ```bash
-# 安装生产依赖（如果尚未安装）
-npm install --production
+# 安装依赖（如果尚未安装）
+npm install
+
+# 构建项目
+npm run build
 
 # 启动生产服务器
 npm run server:prod
@@ -200,46 +213,30 @@ npm run server:prod
 
 #### 使用PM2进行进程管理（推荐）
 
-1. 安装PM2：
+PM2是一个用于Node.js应用的进程管理器，可以自动重启应用并提供日志管理。
 
 ```bash
-npm install -g pm2
-```
+# 安装依赖（如果尚未安装）
+npm install
 
-2. 创建PM2配置文件`ecosystem.config.js`：
-
-```javascript
-module.exports = {
-  apps: [{
-    name: 'knowlage-graph',
-    script: 'dist/server/index.js',
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'production'
-    }
-  }]
-};
-```
-
-3. 启动应用：
-
-```bash
+# 构建项目
 npm run build
+
+# 安装PM2（如果尚未安装）
 npm install -g pm2
+
+# 启动应用（使用项目中已配置的ecosystem.config.js）
 npm run server:prod-pm2
 ```
 
-4. PM2常用命令：
+PM2常用命令：
 
 ```bash
 # 查看应用状态
-pm run server:pm2-status
+npm run server:pm2-status
 
 # 重启应用
-pm run server:pm2-restart
+npm run server:pm2-restart
 
 # 停止应用
 npm run server:pm2-stop
