@@ -201,7 +201,7 @@ app.post('/api/entries', async (req, res) => {
     const { title, description, tags, category } = req.body;
     
     const [result] = await pool.execute(
-      'INSERT INTO buji_land_baike (term, description, label_ids, status) VALUES (?, ?, ?, 0)',
+      'INSERT INTO buji_land_baike (term, disambiguation, label_ids, status) VALUES (?, ?, ?, 0)',
       [title, description, category]
     );
     
@@ -284,7 +284,7 @@ app.put('/api/entries/:id', async (req, res) => {
     const { title, description, tags, category } = req.body;
     
     await pool.execute(
-      'UPDATE buji_land_baike SET term = ?, description = ?, label_ids = ? WHERE id = ?',
+      'UPDATE buji_land_baike SET term = ?, disambiguation = ?, label_ids = ? WHERE id = ?',
       [title, description, category, id]
     );
     

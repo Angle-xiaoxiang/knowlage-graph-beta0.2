@@ -12,7 +12,7 @@
     "server": "tsx server/index.ts",
     "server:dev": "tsx watch server/index.ts",
     "server:prod": "node dist/server/index.js",
-    "server:prod-pm2": "pm2 start ecosystem.config.js",
+    "server:prod-pm2": "pm2 start ecosystem.config.cjs",
     "server:pm2-status": "pm2 status",
     "server:pm2-restart": "pm2 restart knowlage-graph",
     "server:pm2-stop": "pm2 stop knowlage-graph",

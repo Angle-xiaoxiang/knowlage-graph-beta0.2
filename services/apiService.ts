@@ -13,7 +13,7 @@ export interface AIConfig {
 }
 
 // API基础URL
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = '/api';
 
 // 通用请求处理函数
 const request = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
