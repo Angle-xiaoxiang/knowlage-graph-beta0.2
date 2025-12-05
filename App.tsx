@@ -413,17 +413,17 @@ const App: React.FC = () => {
     setShowAISuggestionModal(true);
   };
 
-  const handleAISuggestionsConfirm = () => {
-    // 确认添加所有AI建议
+  const handleAISuggestionsConfirm = (selectedSuggestions: any[]) => {
+    // 确认添加选中的AI建议，只添加弹窗中保留的关系
     if (aiSuggestionSourceNode) {
-      aiSuggestions.forEach(s => {
+      selectedSuggestions.forEach(s => {
         if (s.type && s.targetId) {
           handleAddLink({
             id: generateId(),
             source: aiSuggestionSourceNode.id,
             target: s.targetId,
             type: s.type,
-            weight: s.weight || 3
+            weight: 5 // 固定默认权重为5
           });
         }
       });
@@ -436,10 +436,6 @@ const App: React.FC = () => {
         }
       }
     }
-    setShowAISuggestionModal(false);
-  };
-
-  const handleAISuggestionsCancel = () => {
     setShowAISuggestionModal(false);
   };
 
@@ -727,7 +723,7 @@ const App: React.FC = () => {
         suggestions={aiSuggestions}
         allNodes={nodes}
         onConfirm={handleAISuggestionsConfirm}
-        onCancel={handleAISuggestionsCancel}
+        onCancel={() => setShowAISuggestionModal(false)}
       />
     </div>
   );
