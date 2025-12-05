@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Entry, RelationType, Relationship, RELATION_LABELS, CATEGORY_STYLES, CATEGORIES } from '../types';
+import { Entry, Relationship, RelationType, Category, RELATION_LABELS, CATEGORIES, CATEGORY_STYLES } from '../types';
 import { Plus, Trash2, Wand2, Network, Save, X, Link2, Search, ChevronsUpDown, Check, Pencil, Undo2, Weight, ListTree, LocateFixed, CopyPlus, Eye, Hash } from 'lucide-react';
 import { getAIService } from '../services/aiService';
 
@@ -130,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({
          setEditingLinkId(existingLink.id);
          setLinkFormData({
             targetId: pendingLinkTarget.id,
-            type: existingLink.type,
+            type: existingLink.type as RelationType,
             weight: existingLink.weight
          });
          setLinkSearchTerm(pendingLinkTarget.title); 
@@ -183,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       const newNode: Entry = {
         id: newId,
         title: formData.title || '新建词条',
-        category: formData.category || '概念',
+        category: formData.category || 0,
         description: formData.description || '',
         tags: [] 
       };
@@ -228,7 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     
     setFormData({
       title: selectedNode.title, // 保留标题
-      category: '概念', // 重置分类 (通常不同义项分类不同)
+      category: 0, // 重置分类 (通常不同义项分类不同)
       description: '', // 强制清空描述，要求重新输入
       tags: []
     });
@@ -310,7 +310,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           return sId === selectedNode.id && tId === s.targetId && l.type === s.type;
         });
         return isValidType && isValidTarget && isNew;
-      });
+      }).slice(0, 10); // 最多返回10条置信度最高的建议
 
       if (validSuggestions.length === 0) {
         alert("AI 未发现新的关联建议，或建议的关联已存在。");
@@ -380,7 +380,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     setEditingLinkId(link.id);
     setLinkFormData({
       targetId: targetId,
-      type: link.type,
+      type: link.type as RelationType,
       weight: link.weight
     });
     setLinkSearchTerm(targetNode ? targetNode.title : '');

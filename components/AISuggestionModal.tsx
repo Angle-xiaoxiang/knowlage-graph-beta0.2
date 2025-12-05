@@ -17,7 +17,7 @@ interface Suggestion {
 
 interface AISuggestionModalProps {
   isOpen: boolean;
-  suggestions: Array<Omit<Suggestion, 'id'>>;
+  suggestions: Array<{ targetId: string; type: RelationType; weight?: number; reason?: string }>;
   allNodes: Entry[];
   onConfirm: (selectedSuggestions: Suggestion[]) => void;
   onCancel: () => void;

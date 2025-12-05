@@ -124,13 +124,13 @@ class DoubaoService {
       {
         role: "user",
         content: `
-          请分析源词条与候选词条列表之间的逻辑关系。
+          请分析源词条与候选词条列表之间的逻辑关系，注意关系的方向：源词条是主语，目标词条是宾语。
           
           源词条: "${currentEntry.title}" - ${currentEntry.description}
           
           候选词条列表: ${JSON.stringify(availableTargets)}
           
-          请返回一个JSON列表，包含你认为存在的高置信度逻辑关系。
+          请返回一个JSON列表，包含最多10条你认为存在的最高置信度逻辑关系。
           
           每个关系对象必须包含以下字段：
           1. targetId: 目标词条的ID（从候选词条列表中获取）
@@ -142,12 +142,22 @@ class DoubaoService {
              - 例如：猫属于哺乳动物，哺乳动物属于动物，只推荐猫和哺乳动物的关系，不推荐猫和动物的关系
           2. 当两个实体有共同上级概念时，不直接关联这两个实体
              - 例如：猫和狗都属于哺乳动物，不推荐猫和狗的关联关系，应该建议创建"哺乳动物"实体
-          3. 关系类型定义：
-             - BELONGS_TO (属于): 从属关系（例如：猫属于哺乳动物）
-             - CONTAINS (包含): 包含关系（例如：哺乳动物包含猫）
-             - HOMONYM (同名): 同名不同义（例如：猫（动物）和猫（调制解调器））
-             - SIMILAR_TO (相似): 同义不同名（例如：猫和调制解调器）
-             - RELATED_TO (关联): 其他有一定联系的直接关系（例如：蝌蚪和青蛙）
+          3. 关系类型定义和方向（源词条是主语，目标词条是宾语）：
+             - BELONGS_TO (属于): 源词条属于目标词条，用于更具体的概念属于更一般的概念（例如：猫属于哺乳动物，圆珠笔属于笔）
+               结构：[具体概念] 属于 [一般概念]
+             - CONTAINS (包含): 源词条包含目标词条，用于更一般的概念包含更具体的概念（例如：哺乳动物包含猫，笔包含圆珠笔）
+               结构：[一般概念] 包含 [具体概念]
+             - HOMONYM (同名): 源词条与目标词条同名不同义（例如：猫（动物）和猫（调制解调器））
+             - SIMILAR_TO (相似): 源词条与目标词条同义不同名，即它们是同一个概念的不同名称，仅当两个词条完全同义时使用（例如：西红柿和番茄，猫和猫咪，土豆和马铃薯）
+               注意：
+               - 不要将同类别实体（如芹菜和黄瓜都是蔬菜）标记为相似关系
+               - 不要将"XX是XX的一种"的关系标记为相似关系
+               - 仅当两个词条是同一个概念的不同名称时，才使用相似关系
+             - RELATED_TO (关联): 源词条与目标词条有其他一定联系的直接关系（例如：蝌蚪和青蛙）
+          
+          重要：
+          - 对于BELONGS_TO和CONTAINS关系，只需要推荐其中一种关系（根据源词条和目标词条的概念层次选择合适的方向），不需要同时推荐两种
+          - 系统会自动创建反向关系，例如：如果推荐"圆珠笔属于笔"，系统会自动创建"笔包含圆珠笔"的反向关系
 
           请直接返回 JSON 格式，不要包含任何其他内容。
         `
@@ -190,32 +200,32 @@ class DoubaoService {
     }
 
     // 转换AI返回的格式到我们需要的格式，并处理可能的字段名差异
-    return rawSuggestions.map(suggestion => {
-      // 处理不同字段名的情况
-      const targetValue = suggestion.targetId || suggestion.target;
-      const typeValue = suggestion.type || suggestion.relation;
-      
-      // 如果targetValue是标题而不是ID，尝试通过标题查找对应的ID
-      let targetId = targetValue;
-      if (targetValue && !allEntries.some(entry => entry.id === targetValue)) {
-        // 尝试通过标题查找ID
-        const matchingEntry = allEntries.find(entry => entry.title === targetValue);
-        if (matchingEntry) {
-          targetId = matchingEntry.id;
+    return rawSuggestions.map((suggestion: any) => {
+        // 处理不同字段名的情况
+        const targetValue = suggestion.targetId || suggestion.target;
+        const typeValue = suggestion.type || suggestion.relation;
+        
+        // 如果targetValue是标题而不是ID，尝试通过标题查找对应的ID
+        let targetId = targetValue;
+        if (targetValue && !allEntries.some(entry => entry.id === targetValue)) {
+          // 尝试通过标题查找ID
+          const matchingEntry = allEntries.find(entry => entry.title === targetValue);
+          if (matchingEntry) {
+            targetId = matchingEntry.id;
+          }
         }
-      }
-      
-      return {
-        targetId: targetId,
-        type: typeValue as RelationType,
-        reason: suggestion.reason || "AI建议的关联"
-      };
-    }).filter(suggestion => {
-      // 过滤掉无效的建议
-      return suggestion.targetId && 
-             Object.values(RelationType).includes(suggestion.type) &&
-             allEntries.some(entry => entry.id === suggestion.targetId);
-    });
+        
+        return {
+          targetId: targetId,
+          type: typeValue as RelationType,
+          reason: suggestion.reason || "AI建议的关联"
+        };
+      }).filter((suggestion: { targetId: string; type: RelationType }) => {
+        // 过滤掉无效的建议
+        return suggestion.targetId && 
+               Object.values(RelationType).includes(suggestion.type) &&
+               allEntries.some(entry => entry.id === suggestion.targetId);
+      });
   }
 }
 

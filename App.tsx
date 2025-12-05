@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Entry, Relationship, RelationType, CATEGORY_STYLES } from './types';
+import { Entry, Relationship, RelationType, Category, CATEGORY_STYLES } from './types';
 import GraphView, { GraphViewHandle } from './components/GraphView';
 import KanbanView, { KanbanViewHandle } from './components/KanbanView';
 import Sidebar from './components/Sidebar';
@@ -44,6 +44,7 @@ const App: React.FC = () => {
     targetId: string;
     type: RelationType;
     weight?: number;
+    reason?: string;
   }>>([]);
   const [aiSuggestionSourceNode, setAiSuggestionSourceNode] = useState<Entry | null>(null);
   
