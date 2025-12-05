@@ -1,5 +1,5 @@
 import { Entry, RelationType } from "../types";
-import GeminiService from "./geminiService";
+// import GeminiService from "./geminiService"; // 暂时禁用Google Gemini
 import DoubaoService from "./doubaoService";
 import { apiService } from "./apiService";
 
@@ -29,9 +29,9 @@ class AIServiceManager {
   // 初始化AI服务
   private initService(): void {
     switch (this.config.type) {
-      case "gemini":
-        this.currentService = new GeminiService(this.config.apiKey, this.config.modelName);
-        break;
+      // case "gemini":
+      //   this.currentService = new GeminiService(this.config.apiKey, this.config.modelName);
+      //   break;
       case "doubao":
         this.currentService = new DoubaoService(this.config.apiKey, this.config.modelName);
         break;
@@ -80,15 +80,23 @@ export const initAIService = async (modelType: "gemini" | "doubao"): Promise<AIS
     // 从后端获取AI配置
     const aiConfig = await apiService.getAIConfig();
     // 找到对应的模型配置
-    const modelConfig = aiConfig.models.find(model => model.type === modelType);
+    let modelConfig = aiConfig.models.find(model => model.type === modelType);
+    let serviceType = modelType;
     
+    // 如果找不到指定模型，回退到使用doubao
     if (!modelConfig) {
-      throw new Error(`Model ${modelType} not configured`);
+      console.warn(`Model ${modelType} not configured, falling back to doubao`);
+      modelConfig = aiConfig.models.find(model => model.type === "doubao");
+      serviceType = "doubao";
+      
+      if (!modelConfig) {
+        throw new Error("No AI models configured");
+      }
     }
     
     // 创建完整的服务配置
     const serviceConfig: AIServiceConfig = {
-      type: modelType,
+      type: serviceType,
       apiKey: modelConfig.apiKey,
       modelName: modelConfig.defaultModelName
     };

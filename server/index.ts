@@ -423,12 +423,12 @@ app.get('/api/ai-config', async (req, res) => {
     // 从环境变量中获取AI模型配置
     const aiConfig = {
       models: [
-        {
-          type: 'gemini',
-          name: 'Google Gemini',
-          apiKey: process.env.GEMINI_API_KEY || '',
-          defaultModelName: process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash'
-        },
+        // {
+        //   type: 'gemini',
+        //   name: 'Google Gemini',
+        //   apiKey: process.env.GEMINI_API_KEY || '',
+        //   defaultModelName: process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash'
+        // },
         {
           type: 'doubao',
           name: '豆包大模型',

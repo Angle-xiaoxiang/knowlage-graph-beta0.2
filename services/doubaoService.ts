@@ -132,22 +132,64 @@ class DoubaoService {
           
           请返回一个JSON列表，包含你认为存在的高置信度逻辑关系。
           
-          允许的关系类型 (Relation Types) 请使用以下英文枚举值: ${Object.values(RelationType).join(', ')}。
-          对应中文含义：
-          BELONGS_TO: 属于
-          CONTAINS: 包含
-          RELATED_TO: 关联
-          SIMILAR_TO: 相似
-          HOMONYM: 同名 (指名称相同但含义不同的词条)
+          每个关系对象必须包含以下字段：
+          1. targetId: 目标词条的ID（从候选词条列表中获取）
+          2. type: 关系类型，使用以下英文枚举值之一: ${Object.values(RelationType).join(', ')}
+          3. reason: 简短的中文解释
+          
+          请严格按照以下规则和定义使用关系类型：
+          1. 只推荐直接关系，不推荐间接关系
+             - 例如：猫属于哺乳动物，哺乳动物属于动物，只推荐猫和哺乳动物的关系，不推荐猫和动物的关系
+          2. 当两个实体有共同上级概念时，不直接关联这两个实体
+             - 例如：猫和狗都属于哺乳动物，不推荐猫和狗的关联关系，应该建议创建"哺乳动物"实体
+          3. 关系类型定义：
+             - BELONGS_TO (属于): 从属关系（例如：猫属于哺乳动物）
+             - CONTAINS (包含): 包含关系（例如：哺乳动物包含猫）
+             - HOMONYM (同名): 同名不同义（例如：猫（动物）和猫（调制解调器））
+             - SIMILAR_TO (相似): 同义不同名（例如：猫和调制解调器）
+             - RELATED_TO (关联): 其他有一定联系的直接关系（例如：蝌蚪和青蛙）
 
-          reason 字段请用简短的中文解释。
           请直接返回 JSON 格式，不要包含任何其他内容。
         `
       }
     ];
 
     const responseText = await this.callApi(messages);
-    return JSON.parse(responseText);
+    let rawSuggestions = [];
+    try {
+      rawSuggestions = JSON.parse(responseText);
+    } catch (error) {
+      console.error("Failed to parse AI response:", error);
+      return [];
+    }
+
+    // 转换AI返回的格式到我们需要的格式，并处理可能的字段名差异
+    return rawSuggestions.map(suggestion => {
+      // 处理不同字段名的情况
+      const targetValue = suggestion.targetId || suggestion.target;
+      const typeValue = suggestion.type || suggestion.relation;
+      
+      // 如果targetValue是标题而不是ID，尝试通过标题查找对应的ID
+      let targetId = targetValue;
+      if (targetValue && !allEntries.some(entry => entry.id === targetValue)) {
+        // 尝试通过标题查找ID
+        const matchingEntry = allEntries.find(entry => entry.title === targetValue);
+        if (matchingEntry) {
+          targetId = matchingEntry.id;
+        }
+      }
+      
+      return {
+        targetId: targetId,
+        type: typeValue as RelationType,
+        reason: suggestion.reason || "AI建议的关联"
+      };
+    }).filter(suggestion => {
+      // 过滤掉无效的建议
+      return suggestion.targetId && 
+             Object.values(RelationType).includes(suggestion.type) &&
+             allEntries.some(entry => entry.id === suggestion.targetId);
+    });
   }
 }
 

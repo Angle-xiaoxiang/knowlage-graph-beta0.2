@@ -26,14 +26,14 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, config, onSave, ai
     setLocalConfig(config);
   }, [config]);
 
-  // 使用从后端获取的模型选项
+  // 使用从后端获取的模型选项，只保留豆包大模型
   const modelOptions = aiModels.length > 0 ? 
-    aiModels.map(model => ({
+    aiModels.filter(model => model.type === 'doubao').map(model => ({
       value: model.type,
       label: model.name
     })) :
     [
-      { value: 'gemini', label: 'Google Gemini' },
+      // { value: 'gemini', label: 'Google Gemini' }, // 暂时禁用Google Gemini
       { value: 'doubao', label: '豆包大模型' }
     ];
 

@@ -24,6 +24,11 @@ interface SidebarProps {
   pendingLinkTarget?: Entry | null; // 新增：用于接收拖拽放置的目标节点
   onPreviewConnection: (targetId: string | null) => void; // 新增：用于预览连接的回调
   onOpenDetailView?: () => void; // 新增：打开详情页回调
+  onAISuggestions?: (sourceNode: Entry, suggestions: Array<{
+    targetId: string;
+    type: RelationType;
+    weight?: number;
+  }>) => void; // 新增：AI建议回调
 }
 
 // 适用于无安全上下文环境的安全 ID 生成器
@@ -48,7 +53,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   initialTitle = '', // 默认为空
   pendingLinkTarget,
   onPreviewConnection,
-  onOpenDetailView
+  onOpenDetailView,
+  onAISuggestions
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -237,7 +243,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     try {
       const aiService = getAIService();
       const details = await aiService.generateEntryDetails(formData.title);
-      setFormData(prev => ({ ...prev, ...details }));
+      
+      // 将豆包返回的分类名称转换为对应的分类ID
+      const categoryName = details.category;
+      const matchedCategory = categories.find(cat => cat.name === categoryName);
+      const categoryId = matchedCategory ? matchedCategory.id : categories.find(cat => cat.name === '其他')?.id || 1;
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        description: details.description, 
+        category: categoryId 
+      }));
     } catch (error) {
       console.error(error);
       alert("生成内容失败。请确保已配置 AI 服务。");
@@ -287,8 +303,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         const isValidType = Object.values(RelationType).includes(s.type);
         // 确保targetId存在于allNodes中
         const isValidTarget = allNodes.some(n => n.id === s.targetId);
-        // 确保不是已存在的关系
-        const isNew = !existingTargetIds.has(s.targetId);
+        // 检查是否已经存在相同源、目标和类型的关系
+        const isNew = !links.some(l => {
+          const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
+          const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+          return sId === selectedNode.id && tId === s.targetId && l.type === s.type;
+        });
         return isValidType && isValidTarget && isNew;
       });
 
@@ -297,31 +317,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         return;
       }
       
-      // 生成确认消息，添加安全检查
-      const confirmMsg = `找到 ${validSuggestions.length} 个新建议:\n` + 
-        validSuggestions.map(s => {
-          const relationLabel = RELATION_LABELS[s.type] || '关联';
-          const targetNode = allNodes.find(n => n.id === s.targetId);
-          const targetTitle = targetNode?.title || '未知节点';
-          return `${relationLabel} -> ${targetTitle}`;
-        }).join('\n') +
-        `\n\n是否添加这些关联？`;
-
-      if (window.confirm(confirmMsg)) {
-        validSuggestions.forEach(s => {
-          // 再次确认数据有效性，防止崩溃
-          if (s.type && s.targetId) {
-            onAddLink({
-              id: generateId(),
-              source: selectedNode.id,
-              target: s.targetId,
-              type: s.type,
-              weight: 3 // AI 建议的默认权重
-            });
-          }
-        });
-        // AI 建议的关联关系添加后，自动定位到当前选中节点
-        onCenterNode();
+      // 通过回调将建议传递给App组件
+      if (onAISuggestions) {
+        onAISuggestions(selectedNode, validSuggestions);
       }
     } catch (error) {
       console.error('AI建议关系错误:', error);
@@ -412,16 +410,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   const selectedTargetNode = allNodes.find(n => n.id === linkFormData.targetId);
 
   return (
-    <div className="w-full h-auto max-h-full flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 shadow-2xl rounded-2xl overflow-hidden transition-colors">
-      {/* 顶部标题 */}
-      <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 min-h-[60px] shrink-0">
-        <h2 className="font-bold text-slate-800 dark:text-slate-200 text-lg flex items-center gap-2">
-          {isCreating ? <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" /> : <Network className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
-          {isCreating ? (homonymSourceId ? '创建同名词条' : '新建词条') : '词条详情'}
-        </h2>
-        <div className="flex items-center gap-1">
-          {!isCreating && (
-             <>
+      <div className="w-full h-auto max-h-full flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 shadow-2xl rounded-2xl overflow-hidden transition-colors">
+        {/* 顶部标题 */}
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 min-h-[60px] shrink-0">
+          <h2 className="font-bold text-slate-800 dark:text-slate-200 text-lg flex items-center gap-2">
+            {isCreating ? <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" /> : <Network className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
+            {isCreating ? (homonymSourceId ? '创建同名词条' : '新建词条') : '词条详情'}
+          </h2>
+          <div className="flex items-center gap-1">
+            {!isCreating && (
+               <>
                 {onOpenDetailView && (
                    <button 
                      onClick={onOpenDetailView}

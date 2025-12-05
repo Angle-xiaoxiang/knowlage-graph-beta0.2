@@ -4,6 +4,7 @@ import GraphView, { GraphViewHandle } from './components/GraphView';
 import KanbanView, { KanbanViewHandle } from './components/KanbanView';
 import Sidebar from './components/Sidebar';
 import Settings, { AIModelConfig } from './components/Settings';
+import AISuggestionModal from './components/AISuggestionModal';
 import { Plus, Search, LayoutGrid, Network, Minus, RotateCcw, Unplug, X, ExternalLink, Sun, Moon, Monitor, Database, Settings as SettingsIcon, RefreshCw } from 'lucide-react';
 import { initAIService } from './services/aiService';
 import { apiService } from './services/apiService';
@@ -37,16 +38,25 @@ const App: React.FC = () => {
   const [pendingLinkTarget, setPendingLinkTarget] = useState<Entry | null>(null);
   const [previewConnectionId, setPreviewConnectionId] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
+  // AI建议弹窗状态
+  const [showAISuggestionModal, setShowAISuggestionModal] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{
+    targetId: string;
+    type: RelationType;
+    weight?: number;
+  }>>([]);
+  const [aiSuggestionSourceNode, setAiSuggestionSourceNode] = useState<Entry | null>(null);
   
   // --- AI Model Settings ---  
   const [aiConfig, setAiConfig] = useState<AIModelConfig>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_AI_CONFIG);
-      const parsedConfig = saved ? JSON.parse(saved) : { type: 'gemini' };
-      // 只保留type字段
-      return { type: parsedConfig.type };
+      const parsedConfig = saved ? JSON.parse(saved) : { type: 'doubao' };
+      // 只保留type字段，确保使用doubao作为默认值
+      const configType = parsedConfig.type === 'doubao' ? 'doubao' : 'doubao';
+      return { type: configType };
     } catch { 
-      return { type: 'gemini' };
+      return { type: 'doubao' };
     }
   });
   const [aiModels, setAiModels] = useState<Array<{ type: string; name: string; defaultModelName: string }>>([]);
@@ -396,6 +406,43 @@ const App: React.FC = () => {
     setSearchQuery('');
   };
 
+  // AI弹窗相关函数
+  const handleAISuggestions = (sourceNode: Entry, suggestions: typeof aiSuggestions) => {
+    setAiSuggestionSourceNode(sourceNode);
+    setAiSuggestions(suggestions);
+    setShowAISuggestionModal(true);
+  };
+
+  const handleAISuggestionsConfirm = () => {
+    // 确认添加所有AI建议
+    if (aiSuggestionSourceNode) {
+      aiSuggestions.forEach(s => {
+        if (s.type && s.targetId) {
+          handleAddLink({
+            id: generateId(),
+            source: aiSuggestionSourceNode.id,
+            target: s.targetId,
+            type: s.type,
+            weight: s.weight || 3
+          });
+        }
+      });
+      // AI 建议的关联关系添加后，自动定位到当前选中节点
+      if (aiSuggestionSourceNode) {
+        if (viewMode === 'graph' && graphRef.current) {
+          graphRef.current.centerNode(aiSuggestionSourceNode.id);
+        } else if (viewMode === 'kanban' && kanbanRef.current) {
+          kanbanRef.current.scrollToNode(aiSuggestionSourceNode.id);
+        }
+      }
+    }
+    setShowAISuggestionModal(false);
+  };
+
+  const handleAISuggestionsCancel = () => {
+    setShowAISuggestionModal(false);
+  };
+
   const handleSearchSelect = (node: Entry) => {
     handleNodeClick(node);
     if (viewMode === 'graph' && graphRef.current) {
@@ -625,8 +672,8 @@ const App: React.FC = () => {
              <button onClick={toggleTheme} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">{document.documentElement.classList.contains('dark') ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}</button>
              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
              <button onClick={handleResetData} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600" title="从数据库重新加载数据"><Database className="w-4 h-4" /></button>
-             <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-             <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-blue-600"><SettingsIcon className="w-4 h-4" /></button>
+             {/* <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div> */}
+             {/* <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-slate-500 dark:text-slate-400 hover:text-blue-600"><SettingsIcon className="w-4 h-4" /></button> */}
           </div>
         </div>
       </div>
@@ -636,41 +683,51 @@ const App: React.FC = () => {
         {showSidebar && (
           <div className="pointer-events-auto w-full h-full">
             <Sidebar 
-              selectedNode={selectedNode}
-              allNodes={nodes}
-              links={links}
-              categories={categories}
-              onAddNode={handleAddNode}
-              onUpdateNode={handleUpdateNode}
-              onDeleteNode={handleDeleteNode}
-              onAddLink={handleAddLink}
-              onUpdateLink={handleUpdateLink}
-              onDeleteLink={handleDeleteLink}
-              onSelectNode={handleNodeClick}
-              onCenterNode={() => {
-                if (selectedNode) {
-                  if (viewMode === 'graph' && graphRef.current) graphRef.current.centerNode(selectedNode.id);
-                  else if (viewMode === 'kanban' && kanbanRef.current) kanbanRef.current.scrollToNode(selectedNode.id);
-                }
-              }}
-              hoveredNodeId={hoveredNodeId}
-              setHoveredNodeId={setHoveredNodeId}
-              onClose={() => { setShowSidebar(false); setSelectedNode(null); }}
-              initialTitle={pendingCreateTitle}
-              pendingLinkTarget={pendingLinkTarget}
-              onPreviewConnection={setPreviewConnectionId}
-            />
+            selectedNode={selectedNode}
+            allNodes={nodes}
+            links={links}
+            categories={categories}
+            onAddNode={handleAddNode}
+            onUpdateNode={handleUpdateNode}
+            onDeleteNode={handleDeleteNode}
+            onAddLink={handleAddLink}
+            onUpdateLink={handleUpdateLink}
+            onDeleteLink={handleDeleteLink}
+            onSelectNode={handleNodeClick}
+            onCenterNode={() => {
+              if (selectedNode) {
+                if (viewMode === 'graph' && graphRef.current) graphRef.current.centerNode(selectedNode.id);
+                else if (viewMode === 'kanban' && kanbanRef.current) kanbanRef.current.scrollToNode(selectedNode.id);
+              }
+            }}
+            hoveredNodeId={hoveredNodeId}
+            setHoveredNodeId={setHoveredNodeId}
+            onClose={() => { setShowSidebar(false); setSelectedNode(null); }}
+            initialTitle={pendingCreateTitle}
+            pendingLinkTarget={pendingLinkTarget}
+            onPreviewConnection={setPreviewConnectionId}
+            onAISuggestions={handleAISuggestions}
+          />
           </div>
         )}
       </div>
 
-      {/* 设置面板 */}
-      <Settings
+      {/* 设置面板 - 暂时禁用 */}
+      {/* <Settings
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         config={aiConfig}
         onSave={setAiConfig}
         aiModels={aiModels}
+      /> */}
+
+      {/* AI关联关系建议弹窗 */}
+      <AISuggestionModal
+        isOpen={showAISuggestionModal}
+        suggestions={aiSuggestions}
+        allNodes={nodes}
+        onConfirm={handleAISuggestionsConfirm}
+        onCancel={handleAISuggestionsCancel}
       />
     </div>
   );

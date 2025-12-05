@@ -14,7 +14,15 @@ export default defineConfig(({ mode }) => {
         'localhost',
         '127.0.0.1',
         'wiki.bujiland.cloud' // 允许wiki.bujiland.cloud域名访问
-      ]
+      ],
+      proxy: {
+        // 将所有/api请求代理到后端服务器
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          secure: false
+        }
+      }
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.VITE_API_KEY || process.env.API_KEY)
