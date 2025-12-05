@@ -34,6 +34,7 @@
 ```
 knowlage-graph-beta0.2/
 ├── components/          # React组件
+│   ├── AISuggestionModal.tsx # AI建议弹窗
 │   ├── CMSEditModal.tsx    # CMS编辑弹窗
 │   ├── CMSPage.tsx         # CMS管理页面
 │   ├── EntryDetailView.tsx # 词条详情页面
@@ -53,8 +54,11 @@ knowlage-graph-beta0.2/
 │   ├── doubaoService.ts    # 豆包AI服务
 │   └── geminiService.ts    # Gemini AI服务
 ├── .env                 # 环境变量配置
+├── .env.example         # 环境变量示例
 ├── .gitignore           # Git忽略文件
 ├── App.tsx              # 应用入口组件
+├── ecosystem.config.cjs # PM2配置文件（CJS版本）
+├── ecosystem.config.js  # PM2配置文件
 ├── index.css            # 全局样式
 ├── index.html           # HTML模板
 ├── index.tsx            # 应用入口文件
@@ -62,9 +66,11 @@ knowlage-graph-beta0.2/
 ├── package-lock.json    # 依赖锁定文件
 ├── package.json         # 项目配置和依赖
 ├── postcss.config.js    # PostCSS配置
+├── query                # 查询相关文件
 ├── tailwind.config.js   # Tailwind CSS配置
 ├── tsconfig.json        # TypeScript配置
 ├── tsconfig.node.json   # TypeScript Node配置
+├── tsconfig.server.json # TypeScript服务器配置
 ├── types.ts             # TypeScript类型定义
 └── vite.config.ts       # Vite配置
 ```
@@ -492,6 +498,10 @@ npm run start
 | lucide-react | ^0.344.0 | 图标 |
 | express | ^4.19.2 | API服务器 |
 | mysql2 | ^3.15.3 | 数据库连接 |
+| cors | ^2.8.5 | 跨域资源共享 |
+| dotenv | ^17.2.3 | 环境变量管理 |
+| clsx | ^2.1.0 | CSS类名管理 |
+| tailwind-merge | ^2.2.1 | Tailwind CSS类名合并 |
 | @google/genai | ^1.30.0 | Google Gemini AI服务 |
 
 ### 开发依赖
