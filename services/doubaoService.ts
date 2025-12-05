@@ -157,10 +157,36 @@ class DoubaoService {
     const responseText = await this.callApi(messages);
     let rawSuggestions = [];
     try {
+      // 尝试直接解析JSON
       rawSuggestions = JSON.parse(responseText);
+      console.log("Successfully parsed AI response:", rawSuggestions);
     } catch (error) {
-      console.error("Failed to parse AI response:", error);
-      return [];
+      console.error("Failed to parse AI response directly:", error);
+      console.error("Raw response text:", responseText);
+      
+      try {
+        // 尝试提取JSON数组部分（处理可能包含其他内容的响应）
+        const jsonMatch = responseText.match(/\[.*\]/s);
+        if (jsonMatch) {
+          console.log("Extracted JSON part:", jsonMatch[0]);
+          rawSuggestions = JSON.parse(jsonMatch[0]);
+          console.log("Successfully parsed extracted JSON:", rawSuggestions);
+        } else {
+          // 尝试提取JSON对象部分
+          const objMatch = responseText.match(/\{.*\}/s);
+          if (objMatch) {
+            console.log("Extracted JSON object part:", objMatch[0]);
+            rawSuggestions = [JSON.parse(objMatch[0])];
+            console.log("Successfully parsed extracted JSON object:", rawSuggestions);
+          } else {
+            console.error("Could not extract valid JSON from response");
+            return [];
+          }
+        }
+      } catch (error2) {
+        console.error("Failed to extract and parse JSON from response:", error2);
+        return [];
+      }
     }
 
     // 转换AI返回的格式到我们需要的格式，并处理可能的字段名差异
