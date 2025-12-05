@@ -721,7 +721,7 @@ const App: React.FC = () => {
       {/* AI关联关系建议弹窗 */}
       <AISuggestionModal
         isOpen={showAISuggestionModal}
-        suggestions={aiSuggestions}
+        suggestions={aiSuggestions.map(s => ({ ...s, id: generateId() }))}
         allNodes={nodes}
         onConfirm={handleAISuggestionsConfirm}
         onCancel={() => setShowAISuggestionModal(false)}
