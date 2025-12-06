@@ -59,6 +59,7 @@ export interface Entry {
   category: number;
   description: string;
   tags: string[];
+  status: number; // 0: 未启用, 1: 启用
   x?: number;
   y?: number;
   vx?: number;

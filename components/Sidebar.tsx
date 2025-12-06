@@ -91,7 +91,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       title: initialTitle || '', // 如果有初始标题则使用
       category: categories.length > 0 ? categories[0].id : 0,
       description: '',
-      tags: []
+      tags: [],
+      status: 1 // 默认启用
     });
     resetLinkForm();
   };
@@ -170,7 +171,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
       (formData.title || '') !== (selectedNode.title || '') ||
       (formData.category || '概念') !== (selectedNode.category || '概念') ||
-      (formData.description || '') !== (selectedNode.description || '')
+      (formData.description || '') !== (selectedNode.description || '') ||
+      formData.status !== selectedNode.status
     );
   }, [formData, selectedNode, isCreating]);
 
@@ -187,7 +189,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           title: formData.title || '新建词条',
           category: formData.category || 0,
           description: formData.description || '',
-          tags: [] 
+          tags: [],
+          status: formData.status || 1 
         };
         
         // 调用父组件的添加节点函数，传递不包含id的节点对象
@@ -470,25 +473,30 @@ const Sidebar: React.FC<SidebarProps> = ({
             /* 查看模式 */
             <div className="space-y-4 animate-in fade-in duration-300">
                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    {(() => {
-                      const categoryObj = categories.find(cat => cat.id === formData.category) || { name: '其他', id: 0 };
-                      const categoryName = categoryObj.name;
-                      return (
-                        <span 
-                          className="inline-block px-2.5 py-0.5 text-xs rounded-md font-medium border"
-                          style={{
-                            backgroundColor: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).fill,
-                            color: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).stroke,
-                            borderColor: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).stroke
-                          }}
-                        >
-                          {categoryName}
-                        </span>
-                      );
-                    })()}
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
-                      ID: {formData.id}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-4">
+                      {(() => {
+                        const categoryObj = categories.find(cat => cat.id === formData.category) || { name: '其他', id: 0 };
+                        const categoryName = categoryObj.name;
+                        return (
+                          <span 
+                            className="inline-block px-2.5 py-0.5 text-xs rounded-md font-medium border"
+                            style={{
+                              backgroundColor: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).fill,
+                              color: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).stroke,
+                              borderColor: (CATEGORY_STYLES[categoryName] || CATEGORY_STYLES['其他']).stroke
+                            }}
+                          >
+                            {categoryName}
+                          </span>
+                        );
+                      })()}
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
+                        ID: {formData.id}
+                      </span>
+                    </div>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${formData.status === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
+                      {formData.status === 1 ? '已启用' : '未启用'}
                     </span>
                   </div>
                   <div className="flex justify-between items-start gap-2 mb-3 pl-1">
@@ -571,6 +579,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                     ))}
                   </select>
                   <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 启用状态字段 */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">启用状态</label>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${formData.status === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
+                    {formData.status === 1 ? '已启用' : '未启用'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={formData.status === 1}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.checked ? 1 : 0 })}
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
               </div>
 

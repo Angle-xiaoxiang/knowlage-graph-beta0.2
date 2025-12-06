@@ -69,7 +69,7 @@ app.get('/api/entries', async (req, res) => {
     const categoryMap = new Map((categories as any[]).map(cat => [cat.id, cat.name]));
     
     const [rows] = await pool.execute(
-      'SELECT id, term AS title, disambiguation AS description, label_ids AS category FROM buji_land_baike WHERE is_deleted = 0'
+      'SELECT id, term AS title, disambiguation AS description, label_ids AS category, status FROM buji_land_baike WHERE is_deleted = 0'
     );
     
     // 处理数据格式
@@ -77,7 +77,8 @@ app.get('/api/entries', async (req, res) => {
       ...entry,
       id: entry.id?.toString() || '',
       tags: [], // 暂时为空，根据用户要求不使用tags字段
-      category: parseInt(entry.category) || 0 // 使用label_ids作为分类ID
+      category: parseInt(entry.category) || 0, // 使用label_ids作为分类ID
+      status: parseInt(entry.status) || 0 // 添加状态字段
     }));
     
     res.json(entries);
@@ -143,7 +144,7 @@ app.get('/api/graph-data', async (req, res) => {
     
     // 获取所有条目，根据用户要求使用指定字段
     const [entries] = await pool.execute(
-      'SELECT id, term AS title, disambiguation AS description, label_ids AS category FROM buji_land_baike WHERE is_deleted = 0'
+      'SELECT id, term AS title, disambiguation AS description, label_ids AS category, status FROM buji_land_baike WHERE is_deleted = 0'
     );
     
     // 获取所有关联关系
@@ -158,7 +159,8 @@ app.get('/api/graph-data', async (req, res) => {
       title: entry.title || '无标题',
       description: entry.description || '', // 确保description是字符串，不为null
       tags: [], // 暂时为空，根据用户要求不使用tags字段
-      category: parseInt(entry.category) || 0 // 使用label_ids作为分类ID
+      category: parseInt(entry.category) || 0, // 使用label_ids作为分类ID
+      status: parseInt(entry.status) || 0 // 添加状态字段
     }));
     
     // 创建节点ID集合，用于验证连线的有效性
@@ -198,14 +200,14 @@ app.get('/api/graph-data', async (req, res) => {
 // 添加新条目
 app.post('/api/entries', async (req, res) => {
   try {
-    const { title, description, tags, category } = req.body;
+    const { title, description, tags, category, status } = req.body;
     
     const [result] = await pool.execute(
-      'INSERT INTO buji_land_baike (term, disambiguation, label_ids, status) VALUES (?, ?, ?, 0)',
-      [title, description, category]
+      'INSERT INTO buji_land_baike (term, disambiguation, label_ids, status) VALUES (?, ?, ?, ?)',
+      [title, description, category, status || 1]
     );
     
-    res.json({ id: (result as any).insertId, title, description, tags, category });
+    res.json({ id: (result as any).insertId, title, description, tags, category, status: status || 1 });
   } catch (error) {
     console.error('Error adding entry:', error);
     res.status(500).json({ error: 'Failed to add entry' });
@@ -281,14 +283,14 @@ app.post('/api/relationships', async (req, res) => {
 app.put('/api/entries/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, tags, category } = req.body;
+    const { title, description, tags, category, status } = req.body;
     
     await pool.execute(
-      'UPDATE buji_land_baike SET term = ?, disambiguation = ?, label_ids = ? WHERE id = ?',
-      [title, description, category, id]
+      'UPDATE buji_land_baike SET term = ?, disambiguation = ?, label_ids = ?, status = ? WHERE id = ?',
+      [title, description, category, status, id]
     );
     
-    res.json({ id, title, description, tags, category });
+    res.json({ id, title, description, tags, category, status });
   } catch (error) {
     console.error('Error updating entry:', error);
     res.status(500).json({ error: 'Failed to update entry' });

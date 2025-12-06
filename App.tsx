@@ -752,6 +752,24 @@ const App: React.FC = () => {
         onConfirm={handleAISuggestionsConfirm}
         onCancel={() => setShowAISuggestionModal(false)}
       />
+
+      {/* 统计数据组件 */}
+      <div className="absolute bottom-6 right-6 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-4 flex gap-6">
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">词条总数</span>
+          <span className="text-2xl font-bold text-slate-800 dark:text-slate-200">{nodes.length}</span>
+        </div>
+        <div className="h-10 w-px bg-slate-200 dark:bg-slate-700"></div>
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">启用词条</span>
+          <span className="text-2xl font-bold text-green-600 dark:text-green-400">{nodes.filter(node => node.status === 1).length}</span>
+        </div>
+        <div className="h-10 w-px bg-slate-200 dark:bg-slate-700"></div>
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">未启用词条</span>
+          <span className="text-2xl font-bold text-red-600 dark:text-red-400">{nodes.filter(node => node.status === 0).length}</span>
+        </div>
+      </div>
     </div>
   );
 };
