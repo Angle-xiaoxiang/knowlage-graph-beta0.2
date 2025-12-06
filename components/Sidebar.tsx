@@ -32,7 +32,8 @@ interface SidebarProps {
 }
 
 // 适用于无安全上下文环境的安全 ID 生成器
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+// 生成临时ID，用于创建新节点时的临时标识
+const generateId = () => `temp-${Date.now().toString(36) + Math.random().toString(36).substr(2)}`;
 
 const Sidebar: React.FC<SidebarProps> = ({
   selectedNode,
@@ -175,39 +176,55 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const isSaveEnabled = !!formData.title && (isCreating || hasChanges);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isSaveEnabled) return;
     
-    if (isCreating) {
-      const newId = generateId();
-      const newNode: Entry = {
-        id: newId,
-        title: formData.title || '新建词条',
-        category: formData.category || 0,
-        description: formData.description || '',
-        tags: [] 
-      };
-      onAddNode(newNode);
+    setLoading(true);
+    try {
+      if (isCreating) {
+        // 创建不包含id的新节点对象，id由服务器生成
+        const newNodeWithoutId: Omit<Entry, 'id'> = {
+          title: formData.title || '新建词条',
+          category: formData.category || 0,
+          description: formData.description || '',
+          tags: [] 
+        };
+        
+        // 调用父组件的添加节点函数，传递不包含id的节点对象
+        // 注意：这里我们假设onAddNode会返回真实节点
+        // 但由于onAddNode是props，我们需要修改它的类型定义
+        // 因此，我们需要另一种方式来实现
+        
+        // 直接调用onAddNode，然后等待selectedNode更新
+        onAddNode(newNodeWithoutId as Entry);
 
-      // 如果是创建同名词条，自动建立关系
-      if (homonymSourceId) {
-        onAddLink({
-          id: generateId(),
-          source: homonymSourceId,
-          target: newId,
-          type: RelationType.HOMONYM, // 使用同名关系
-          weight: 8
-        });
-        // 重置状态
-        setHomonymSourceId(null);
+        // 如果是创建同名词条，自动建立关系
+        if (homonymSourceId) {
+          // 注意：这里的targetId暂时使用临时ID，实际会被服务器替换
+          const tempId = generateId();
+          onAddLink({
+            id: generateId(),
+            source: homonymSourceId,
+            target: tempId,
+            type: RelationType.HOMONYM, // 使用同名关系
+            weight: 8
+          });
+          // 重置状态
+          setHomonymSourceId(null);
+        }
+        
+        // 注意：不再手动更新本地状态，而是等待父组件通过useEffect更新
+        // 父组件的handleAddNode会异步保存节点到服务器，然后更新nodes和selectedNode
+        // useEffect会监听selectedNode变化，自动更新formData、isCreating和isEditing
+        
+      } else if (selectedNode && formData.id) {
+        onUpdateNode(formData as Entry);
+        setIsEditing(false); // 保存后退出编辑模式
       }
-      
-      // 自动选中新创建的节点，进入详情查看模式
-      onSelectNode(newNode);
-
-    } else if (selectedNode && formData.id) {
-      onUpdateNode(formData as Entry);
-      setIsEditing(false); // 保存后退出编辑模式
+    } catch (error) {
+      console.error('保存失败:', error);
+    } finally {
+      setLoading(false);
     }
   };
 

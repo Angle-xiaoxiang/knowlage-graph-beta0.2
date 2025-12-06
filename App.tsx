@@ -245,8 +245,34 @@ const App: React.FC = () => {
 
   const handleAddNode = useCallback(async (node: Entry) => {
     try {
+      // 调用API创建新节点，API会忽略传入的id并生成新id
       const newNode = await apiService.addEntry(node);
-      setNodes(prev => [...prev, newNode]);
+      
+      // 更新nodes数组：如果存在临时节点（id以temp-开头），则替换它，否则添加新节点
+      setNodes(prev => {
+        // 尝试通过title和description匹配临时节点
+        const tempNodeIndex = prev.findIndex(n => 
+          n.title === newNode.title && 
+          n.description === newNode.description && 
+          n.id.startsWith('temp-')
+        );
+        
+        if (tempNodeIndex !== -1) {
+          // 替换临时节点为真实节点
+          const newNodes = [...prev];
+          newNodes[tempNodeIndex] = newNode;
+          return newNodes;
+        } else {
+          // 添加新节点
+          return [...prev, newNode];
+        }
+      });
+      
+      // 立即设置selectedNode为真实节点，确保Sidebar组件显示真实ID
+      setSelectedNode(newNode);
+      
+      // 如果侧边栏未打开，自动打开
+      setShowSidebar(true);
     } catch (err) {
       console.error('添加节点失败:', err);
       setError('添加节点失败');
