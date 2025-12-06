@@ -394,9 +394,16 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
         setHoveredNodeIdRef.current(null);
       });
 
-    // 圆圈
-    const circles = nodeGroup.append("circle")
+    // 圆圈 - 外部圆环（已启用状态显示）
+    const outerCircles = nodeGroup.append("circle")
       .attr("r", NODE_RADIUS)
+      .attr("fill", "transparent")
+      .transition()
+      .duration(300);
+
+    // 圆圈 - 内部填充圆
+    const innerCircles = nodeGroup.append("circle")
+      .attr("r", NODE_RADIUS - 4)
       .transition()
       .duration(300);
 
@@ -663,11 +670,11 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
          return connectedNodeIds.has(d.id) ? 1 : 0.5;
       });
 
-    svg.selectAll("circle")
+    // 5.1 更新外部圆环样式（已启用状态显示）
+    svg.selectAll(".graph-node circle:nth-of-type(1)")
       .attr("fill", (d: any) => {
-         const categoryName = categoryMap.get(d.category) || '其他';
-         const style = CATEGORY_STYLES[categoryName] || DEFAULT_NODE_STYLE;
-         return style.fill;
+         // 外部圆环始终为透明，只显示边框
+         return "transparent";
       })
       .attr("stroke", (d: any) => {
          const categoryName = categoryMap.get(d.category) || '其他';
@@ -675,19 +682,43 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
          return style.stroke;
       })
       .attr("stroke-width", (d: any) => {
-         if (d.id === selectedNodeId) return 4;
-         if (d.id === pendingLinkTargetId) return 4; // 待连接目标同样加粗
-         if (d.id === hoveredNodeId) return 3;
-         return 2;
+         // 根据状态调整外环宽度
+         if (d.status === 1) {
+           // 已启用节点：粗外环
+           if (d.id === selectedNodeId || d.id === pendingLinkTargetId) return 5;
+           if (d.id === hoveredNodeId) return 4;
+           return 3;
+         } else {
+           // 未启用节点：细外环
+           if (d.id === selectedNodeId || d.id === pendingLinkTargetId) return 4;
+           if (d.id === hoveredNodeId) return 3;
+           return 2;
+         }
       })
       .attr("stroke-opacity", (d: any) => {
          if (d.id === pendingLinkTargetId) return 0.5; // 待连接目标：半透明描边，区分起点
          return 1;
       })
-      .attr("stroke-dasharray", null) // 确保节点外环移除虚线 (只在 connectionLine 上使用)
+      .attr("stroke-dasharray", null) // 确保节点外环移除虚线
       .attr("r", (d: any) => {
          if (d.id === selectedNodeId || d.id === hoveredNodeId || d.id === pendingLinkTargetId) return 22;
          return NODE_RADIUS;
+      });
+
+    // 5.2 更新内部填充圆样式
+    svg.selectAll(".graph-node circle:nth-of-type(2)")
+      .attr("fill", (d: any) => {
+         const categoryName = categoryMap.get(d.category) || '其他';
+         const style = CATEGORY_STYLES[categoryName] || DEFAULT_NODE_STYLE;
+         return style.fill;
+      })
+      .attr("stroke", "none") // 内部圆不需要边框
+      .attr("r", (d: any) => {
+         const baseRadius = d.status === 1 ? NODE_RADIUS - 4 : NODE_RADIUS;
+         if (d.id === selectedNodeId || d.id === hoveredNodeId || d.id === pendingLinkTargetId) {
+           return baseRadius + 2; // 选中/悬停/待连接时放大
+         }
+         return baseRadius;
       });
 
     // 手动更新连接线 (connectionLine) 的位置
