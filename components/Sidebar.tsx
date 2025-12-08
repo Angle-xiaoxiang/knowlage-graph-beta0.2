@@ -92,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       category: categories.length > 0 ? categories[0].id : 0,
       description: '',
       tags: [],
-      status: 1 // 默认启用
+      status: 0 // 默认未启用
     });
     resetLinkForm();
   };
@@ -190,7 +190,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           category: formData.category || 0,
           description: formData.description || '',
           tags: [],
-          status: formData.status || 1 
+          status: formData.status || 0 
         };
         
         // 调用父组件的添加节点函数，传递不包含id的节点对象
@@ -250,7 +250,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       title: selectedNode.title, // 保留标题
       category: 0, // 重置分类 (通常不同义项分类不同)
       description: '', // 强制清空描述，要求重新输入
-      tags: []
+      tags: [],
+      status: 0 // 默认未启用
     });
     
     setIsCreating(true);

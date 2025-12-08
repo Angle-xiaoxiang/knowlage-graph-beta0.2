@@ -204,10 +204,10 @@ app.post('/api/entries', async (req, res) => {
     
     const [result] = await pool.execute(
       'INSERT INTO buji_land_baike (term, disambiguation, label_ids, status) VALUES (?, ?, ?, ?)',
-      [title, description, category, status || 1]
+      [title, description, category, status || 0]
     );
     
-    res.json({ id: (result as any).insertId, title, description, tags, category, status: status || 1 });
+    res.json({ id: (result as any).insertId, title, description, tags, category, status: status || 0 });
   } catch (error) {
     console.error('Error adding entry:', error);
     res.status(500).json({ error: 'Failed to add entry' });

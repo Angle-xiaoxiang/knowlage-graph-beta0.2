@@ -296,7 +296,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
         .distance((d: any) => Math.max(60, 200 - ((d.weight || 1) * 15))) // 稍微缩短距离
         .strength(0.8) // 增加连接强度，使边更稳定
       )
-      .force("charge", d3.forceManyBody().strength(-150)) // 降低斥力 (从 -400 到 -150)
+      .force("charge", d3.forceManyBody().strength(-250)) // 降低斥力 (从 -400 到 -250)
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.3)) // 增加中心引力，使新节点更稳定
       .force("collide", d3.forceCollide().radius(30).strength(0.8)); // 增加碰撞强度，防止节点重叠
     
@@ -507,9 +507,9 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
       simulation.force("collide", null);
       
       // 被拖拽节点不产生排斥力
-      // 注意：这里需要与全局 charge 值保持一致（未选中时为 -150，选中为 0）
+      // 注意：这里需要与全局 charge 值保持一致（未选中时为 -250，选中为 0）
       simulation.force("charge", d3.forceManyBody().strength((n: any) => {
-        return n.id === d.id ? 0 : -150;
+        return n.id === d.id ? 0 : -250;
       }));
     }
 
@@ -574,7 +574,7 @@ const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(({
 
       // 拖拽结束：恢复所有物理力
       simulation.force("collide", d3.forceCollide().radius(30)); // 恢复半径 30
-      simulation.force("charge", d3.forceManyBody().strength(-150)); // 恢复斥力 -150
+      simulation.force("charge", d3.forceManyBody().strength(-250)); // 恢复斥力 -250
 
       // 如果放置在有效目标上
       if (potentialTargetId && onNodeDropRef.current) {
